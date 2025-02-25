@@ -19,6 +19,46 @@ A PowerShell module for managing Microsoft 365 users through Microsoft Graph API
 Import-Module .\MK365UserManager.psd1
 ```
 
+## Features
+
+### User Management
+- Create, update, and remove users
+- Manage user properties and access settings
+- Reset passwords and enable MFA
+- Bulk user operations with CSV templates
+
+### Group Management
+- Add and remove users from groups
+- View user group memberships
+- Bulk group assignments
+
+### Security Management
+- Monitor user sign-in status
+- Track security and risk levels
+- Manage authentication methods
+- Enable and configure MFA
+
+### Reporting
+- Generate comprehensive user reports
+- Track security compliance
+- Monitor group memberships
+- Schedule automated reports
+
+### Templates and Scripts
+The module includes ready-to-use templates and scripts for common operations:
+
+#### Templates
+- `NewUsers.csv` - Template for bulk user creation
+- `UserGroupAssignments.csv` - Template for group assignments
+- `BulkUserUpdate.csv` - Template for updating user properties
+
+#### Scripts
+- `New-BulkUsers.ps1` - Create multiple users from CSV
+- `Add-BulkUserGroups.ps1` - Assign users to groups in bulk
+- `Get-UserReport.ps1` - Generate user and security reports
+
+For detailed information about templates and scripts, see `Templates/README.md`.
+
 ## Functions
 
 ### Connection Management
@@ -95,6 +135,35 @@ Import-Module .\MK365UserManager.psd1
   ```powershell
   Get-MK365UserSecurityStatus -UserPrincipalName "user@domain.com"
   ```
+
+## Report Generation
+
+### Basic Reports
+```powershell
+# Generate basic user report
+Get-UserReport.ps1 -OutputPath "Reports\UserReport.csv"
+
+# Include group memberships
+Get-UserReport.ps1 -OutputPath "Reports\UserGroups.csv" -IncludeGroups
+
+# Full security audit
+Get-UserReport.ps1 -OutputPath "Reports\SecurityAudit.csv" -IncludeGroups -IncludeSecurity
+```
+
+### Automated Reports
+Schedule regular reports using Windows Task Scheduler:
+```powershell
+# Create daily report task
+$action = New-ScheduledTaskAction -Execute "PowerShell.exe" `
+    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$PWD\Scripts\Get-UserReport.ps1`" -OutputPath `"$PWD\Reports\DailyReport.csv`""
+$trigger = New-ScheduledTaskTrigger -Daily -At 6AM
+Register-ScheduledTask -TaskName "M365 Daily User Report" -Action $action -Trigger $trigger
+```
+
+### Report Management
+- Reports are generated in the `Reports` directory
+- Report files are automatically excluded from git
+- Implement your organization's backup and retention policies
 
 ## Error Handling
 
