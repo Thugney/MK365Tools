@@ -443,6 +443,149 @@ function Enable-MK365MFA {
     }
 }
 
+# Function to get user access information
+function Get-MK365UserAccess {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$UserPrincipalName
+    )
+    
+    try {
+        # Verify Microsoft Graph connection
+        $context = Get-MgContext
+        if (-not $context) {
+            throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
+        }
+
+        # Get user's roles and app permissions
+        $user = Get-MgUser -UserId $UserPrincipalName
+        $directoryRoles = Get-MgUserMemberOf -UserId $user.Id | Where-Object { $_.'@odata.type' -eq '#microsoft.graph.directoryRole' }
+        $appRoleAssignments = Get-MgUserAppRoleAssignment -UserId $user.Id
+
+        return [PSCustomObject]@{
+            UserPrincipalName = $UserPrincipalName
+            DirectoryRoles = $directoryRoles
+            AppRoleAssignments = $appRoleAssignments
+            AccountEnabled = $user.AccountEnabled
+            SignInRestrictions = @{
+                BlockSignIn = -not $user.AccountEnabled
+                AllowedLocations = $user.SignInLocation
+            }
+        }
+    }
+    catch {
+        Write-Error "Failed to get user access information: $_"
+        throw
+    }
+}
+
+# Function to set user access
+function Set-MK365UserAccess {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$UserPrincipalName,
+        
+        [Parameter(Mandatory = $false)]
+        [bool]$BlockSignIn,
+        
+        [Parameter(Mandatory = $false)]
+        [string[]]$AddDirectoryRoles,
+        
+        [Parameter(Mandatory = $false)]
+        [string[]]$RemoveDirectoryRoles
+    )
+    
+    try {
+        # Verify Microsoft Graph connection
+        $context = Get-MgContext
+        if (-not $context) {
+            throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
+        }
+
+        # Update sign-in block status if specified
+        if ($null -ne $BlockSignIn) {
+            Update-MgUser -UserId $UserPrincipalName -AccountEnabled (-not $BlockSignIn)
+        }
+
+        # Add directory roles if specified
+        if ($AddDirectoryRoles) {
+            foreach ($roleName in $AddDirectoryRoles) {
+                $role = Get-MgDirectoryRole | Where-Object { $_.DisplayName -eq $roleName }
+                if ($role) {
+                    New-MgDirectoryRoleMemberByRef -DirectoryRoleId $role.Id -OdataId "https://graph.microsoft.com/v1.0/directoryObjects/$(Get-MgUser -UserId $UserPrincipalName).Id"
+                }
+                else {
+                    Write-Warning "Role not found: $roleName"
+                }
+            }
+        }
+
+        # Remove directory roles if specified
+        if ($RemoveDirectoryRoles) {
+            foreach ($roleName in $RemoveDirectoryRoles) {
+                $role = Get-MgDirectoryRole | Where-Object { $_.DisplayName -eq $roleName }
+                if ($role) {
+                    Remove-MgDirectoryRoleMemberByRef -DirectoryRoleId $role.Id -DirectoryObjectId (Get-MgUser -UserId $UserPrincipalName).Id
+                }
+                else {
+                    Write-Warning "Role not found: $roleName"
+                }
+            }
+        }
+
+        # Return updated access information
+        return Get-MK365UserAccess -UserPrincipalName $UserPrincipalName
+    }
+    catch {
+        Write-Error "Failed to set user access: $_"
+        throw
+    }
+}
+
+# Function to get user security status
+function Get-MK365UserSecurityStatus {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$UserPrincipalName
+    )
+    
+    try {
+        # Verify Microsoft Graph connection
+        $context = Get-MgContext
+        if (-not $context) {
+            throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
+        }
+
+        # Get user security information
+        $user = Get-MgUser -UserId $UserPrincipalName
+        $authMethods = Get-MgUserAuthenticationMethod -UserId $user.Id
+        $riskDetections = Get-MgRiskDetection -Filter "userPrincipalName eq '$UserPrincipalName'"
+        $signInLogs = Get-MgAuditLogSignIn -Filter "userPrincipalName eq '$UserPrincipalName'" -Top 10
+
+        return [PSCustomObject]@{
+            UserPrincipalName = $UserPrincipalName
+            AuthenticationMethods = $authMethods | ForEach-Object {
+                [PSCustomObject]@{
+                    Type = $_.AdditionalProperties.'@odata.type'
+                    IsDefault = $_.AdditionalProperties.isDefault
+                    CreatedDateTime = $_.AdditionalProperties.createdDateTime
+                }
+            }
+            RiskLevel = $user.RiskLevel
+            RiskState = $user.RiskState
+            RecentRiskDetections = $riskDetections
+            RecentSignIns = $signInLogs | Select-Object CreatedDateTime, Status, IpAddress, Location, ClientAppUsed
+        }
+    }
+    catch {
+        Write-Error "Failed to get user security status: $_"
+        throw
+    }
+}
+
 # Export all functions
 Export-ModuleMember -Function @(
     'Connect-MK365User',
@@ -453,7 +596,10 @@ Export-ModuleMember -Function @(
     'Add-MK365UserToGroup',
     'Remove-MK365UserFromGroup',
     'Get-MK365UserGroups',
+    'Get-MK365UserAccess',
+    'Set-MK365UserAccess',
     'Get-MK365UserSignInStatus',
+    'Get-MK365UserSecurityStatus',
     'Reset-MK365UserPassword',
     'Enable-MK365MFA'
 )

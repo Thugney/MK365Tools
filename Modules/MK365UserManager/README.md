@@ -64,6 +64,17 @@ Import-Module .\MK365UserManager.psd1
   Get-MK365UserGroups -UserPrincipalName "user@domain.com"
   ```
 
+### Access Management
+- `Get-MK365UserAccess`: Retrieves user access information including roles and permissions
+  ```powershell
+  Get-MK365UserAccess -UserPrincipalName "user@domain.com"
+  ```
+
+- `Set-MK365UserAccess`: Manages user access settings including roles and sign-in restrictions
+  ```powershell
+  Set-MK365UserAccess -UserPrincipalName "user@domain.com" -BlockSignIn $false -AddDirectoryRoles @("User Administrator")
+  ```
+
 ### Security Management
 - `Get-MK365UserSignInStatus`: Retrieves user sign-in status
   ```powershell
@@ -78,6 +89,11 @@ Import-Module .\MK365UserManager.psd1
 - `Enable-MK365MFA`: Enables Multi-Factor Authentication for a user
   ```powershell
   Enable-MK365MFA -UserPrincipalName "user@domain.com"
+  ```
+
+- `Get-MK365UserSecurityStatus`: Retrieves comprehensive security information about a user
+  ```powershell
+  Get-MK365UserSecurityStatus -UserPrincipalName "user@domain.com"
   ```
 
 ## Error Handling
