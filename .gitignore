@@ -49,3 +49,8 @@ Modules/MK365LicenseManager/
 *.dev.*
 *.test.*
 *.local.*
+
+# Generated reports
+**/Reports/
+*.csv
+!**/Templates/*.csv
