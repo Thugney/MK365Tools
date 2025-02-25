@@ -1,33 +1,32 @@
+# MK365DeviceManager Module Manifest
 @{
-    ModuleVersion = '0.1.0'
-    GUID = 'f8b0e1d5-7a1d-4e75-8b1a-8d9f5e1d5a7c'
-    Author = 'MK365 Tools'
-    CompanyName = 'MK365'
-    Copyright = '(c) 2025 MK365. All rights reserved.'
-    Description = 'PowerShell module for managing Intune and Autopilot devices'
+    RootModule = 'MK365DeviceManager.psm1'
+    ModuleVersion = '1.0.0-dev'
+    GUID = 'a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6'
+    Author = 'Thugney'
+    CompanyName = 'MK365Tools'
+    Copyright = '(c) 2025 Thugney. All rights reserved.'
+    Description = 'Development version of MK365DeviceManager - A PowerShell module for managing Microsoft 365 devices through Microsoft Graph API'
     PowerShellVersion = '5.1'
     RequiredModules = @(
-        @{ModuleName = 'Microsoft.Graph.Intune'; ModuleVersion = '2.0.0'},
+        @{ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.0.0'},
         @{ModuleName = 'Microsoft.Graph.DeviceManagement'; ModuleVersion = '2.0.0'}
     )
     FunctionsToExport = @(
         'Connect-MK365Device',
         'Get-MK365DeviceOverview',
-        'Export-MK365AutopilotDevices',
-        'Register-MK365AutopilotDevices',
-        'Get-MK365DeviceCompliance',
-        'Get-MK365AppDeploymentStatus',
-        'Get-MK365SecurityBaseline',
-        'Export-MK365DeviceReport',
-        'Set-MK365DeviceGroupAssignment',
         'Get-MK365SecurityStatus',
-        'Get-MK365UpdateCompliance'
+        'Get-MK365SecurityBaseline',
+        'Get-MK365UpdateCompliance',
+        'Get-MK365SystemStatus',
+        'Get-MK365AppDeploymentStatus',
+        'Register-MK365AutopilotDevices'
     )
     PrivateData = @{
         PSData = @{
-            Tags = @('Intune', 'Autopilot', 'DeviceManagement', 'Microsoft365')
-            ProjectUri = ''
-            LicenseUri = ''
+            Tags = @('Microsoft365', 'DeviceManagement', 'Intune', 'Graph', 'Development')
+            ProjectUri = 'https://github.com/Thugney/MK365Tools'
+            LicenseUri = 'https://github.com/Thugney/MK365Tools/blob/main/LICENSE'
         }
     }
 }

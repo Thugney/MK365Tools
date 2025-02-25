@@ -1,7 +1,12 @@
-# MK365Tools - Microsoft 365 Device Management PowerShell Module
+# MK365Tools - Microsoft 365 Management Tools (Development Branch)
 
 [![GitHub](https://img.shields.io/github/license/Thugney/MK365Tools)](https://github.com/Thugney/MK365Tools/blob/main/LICENSE)
 [![Twitter Follow](https://img.shields.io/twitter/follow/eriteach?style=social)](https://twitter.com/eriteach)
+
+> ⚠️ **Development Version Notice**
+> 
+> This is the development branch of MK365Tools. For production use, please use the [main branch](https://github.com/Thugney/MK365Tools/tree/main).
+> Features in this branch may be unstable or incomplete.
 
 A comprehensive PowerShell module collection for managing Microsoft 365 devices, users, security, and compliance through Microsoft Graph API.
 
