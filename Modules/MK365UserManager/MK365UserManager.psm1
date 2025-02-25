@@ -346,16 +346,119 @@ function Get-MK365UserSignInStatus {
             throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
         }
 
-        # Get user sign-in information
-        $signIns = Get-MgUserSignInActivity -UserId $UserPrincipalName
+        # Get user sign-in information using Microsoft Graph cmdlets
+        $user = Get-MgUser -UserId $UserPrincipalName
+        $signInActivity = Get-MgUser -UserId $UserPrincipalName -Property SignInActivity | Select-Object -ExpandProperty SignInActivity
+        $riskStatus = Get-MgRiskyUser -UserId $user.Id -ErrorAction SilentlyContinue
+
         return [PSCustomObject]@{
             UserPrincipalName = $UserPrincipalName
-            LastSignInDateTime = $signIns.LastSignInDateTime
-            LastNonInteractiveSignInDateTime = $signIns.LastNonInteractiveSignInDateTime
+            LastSignInDateTime = $signInActivity.LastSignInDateTime
+            LastNonInteractiveSignInDateTime = $signInActivity.LastNonInteractiveSignInDateTime
+            RiskLevel = $riskStatus.RiskLevel
+            RiskState = $riskStatus.RiskState
+            AccountEnabled = $user.AccountEnabled
         }
     }
     catch {
         Write-Error "Failed to get user sign-in status: $_"
+        throw
+    }
+}
+
+# Function to enable MFA
+function Enable-MK365MFA {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$UserPrincipalName
+    )
+    
+    try {
+        # Verify Microsoft Graph connection
+        $context = Get-MgContext
+        if (-not $context) {
+            throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
+        }
+
+        # Get user ID
+        $userId = (Get-MgUser -UserId $UserPrincipalName).Id
+
+        # Get current authentication methods policy
+        $authMethodConfig = Get-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId "MicrosoftAuthenticator"
+        
+        # Update the policy to include the user
+        $newTarget = @{
+            targetType = "user"
+            id = $userId
+            isRegistrationRequired = $true
+        }
+
+        # Add the user to the included targets
+        $authMethodConfig.AdditionalProperties.includeTargets += $newTarget
+
+        # Update the authentication method policy
+        Update-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration `
+            -AuthenticationMethodConfigurationId "MicrosoftAuthenticator" `
+            -BodyParameter @{
+                State = "enabled"
+                includeTargets = $authMethodConfig.AdditionalProperties.includeTargets
+            }
+        
+        Write-Verbose "MFA enabled for user: $UserPrincipalName"
+    }
+    catch {
+        Write-Error "Failed to enable MFA: $_"
+        throw
+    }
+}
+
+# Function to get user security status
+function Get-MK365UserSecurityStatus {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$UserPrincipalName
+    )
+    
+    try {
+        # Verify Microsoft Graph connection
+        $context = Get-MgContext
+        if (-not $context) {
+            throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
+        }
+
+        # Get user ID
+        $user = Get-MgUser -UserId $UserPrincipalName
+        
+        # Get authentication methods
+        $authMethods = Get-MgUserAuthenticationMethod -UserId $user.Id
+        
+        # Get risk status
+        $riskStatus = Get-MgRiskyUser -UserId $user.Id -ErrorAction SilentlyContinue
+        
+        # Get sign-in logs (last 7 days)
+        $signInLogs = Get-MgAuditLogSignIn -Filter "userId eq '$($user.Id)' and createdDateTime gt $((Get-Date).AddDays(-7).ToString('yyyy-MM-dd'))"
+
+        return [PSCustomObject]@{
+            UserPrincipalName = $UserPrincipalName
+            AuthenticationMethods = $authMethods | ForEach-Object { $_.AdditionalProperties.'@odata.type' }
+            RiskLevel = $riskStatus.RiskLevel
+            RiskState = $riskStatus.RiskState
+            LastSignInAttempts = $signInLogs | Select-Object -First 5 | ForEach-Object {
+                @{
+                    DateTime = $_.CreatedDateTime
+                    Status = $_.Status
+                    Location = $_.Location
+                    ClientApp = $_.ClientAppUsed
+                }
+            }
+            MFAEnabled = ($authMethods | Where-Object { $_.AdditionalProperties.'@odata.type' -eq '#microsoft.graph.microsoftAuthenticatorAuthenticationMethod' }) -ne $null
+            AccountEnabled = $user.AccountEnabled
+        }
+    }
+    catch {
+        Write-Error "Failed to get user security status: $_"
         throw
     }
 }
@@ -387,45 +490,6 @@ function Reset-MK365UserPassword {
     }
     catch {
         Write-Error "Failed to reset password: $_"
-        throw
-    }
-}
-
-# Function to enable MFA
-function Enable-MK365MFA {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$UserPrincipalName
-    )
-    
-    try {
-        # Verify Microsoft Graph connection
-        $context = Get-MgContext
-        if (-not $context) {
-            throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
-        }
-
-        # Create authentication method policy
-        $policy = @{
-            State = "enabled"
-            IncludeTargets = @(
-                @{
-                    TargetType = "user"
-                    Id = (Get-MgUser -UserId $UserPrincipalName).Id
-                }
-            )
-        }
-
-        # Enable MFA for user
-        New-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration `
-            -AuthenticationMethodConfiguration $policy `
-            -AuthenticationMethodId "microsoftAuthenticator"
-        
-        Write-Verbose "MFA enabled for user: $UserPrincipalName"
-    }
-    catch {
-        Write-Error "Failed to enable MFA: $_"
         throw
     }
 }
@@ -527,48 +591,6 @@ function Set-MK365UserAccess {
     }
     catch {
         Write-Error "Failed to set user access: $_"
-        throw
-    }
-}
-
-# Function to get user security status
-function Get-MK365UserSecurityStatus {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$UserPrincipalName
-    )
-    
-    try {
-        # Verify Microsoft Graph connection
-        $context = Get-MgContext
-        if (-not $context) {
-            throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
-        }
-
-        # Get user security information
-        $user = Get-MgUser -UserId $UserPrincipalName
-        $authMethods = Get-MgUserAuthenticationMethod -UserId $user.Id
-        $riskDetections = Get-MgRiskDetection -Filter "userPrincipalName eq '$UserPrincipalName'"
-        $signInLogs = Get-MgAuditLogSignIn -Filter "userPrincipalName eq '$UserPrincipalName'" -Top 10
-
-        return [PSCustomObject]@{
-            UserPrincipalName = $UserPrincipalName
-            AuthenticationMethods = $authMethods | ForEach-Object {
-                [PSCustomObject]@{
-                    Type = $_.AdditionalProperties.'@odata.type'
-                    IsDefault = $_.AdditionalProperties.isDefault
-                    CreatedDateTime = $_.AdditionalProperties.createdDateTime
-                }
-            }
-            RiskLevel = $user.RiskLevel
-            RiskState = $user.RiskState
-            RecentRiskDetections = $riskDetections
-            RecentSignIns = $signInLogs | Select-Object CreatedDateTime, Status, IpAddress, Location, ClientAppUsed
-        }
-    }
-    catch {
-        Write-Error "Failed to get user security status: $_"
         throw
     }
 }
