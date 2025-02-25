@@ -1,0 +1,4 @@
+DisplayName,UserPrincipalName,Password,Department,JobTitle,MobilePhone,ForceChangePasswordNextSignIn
+John Doe,john.doe@contoso.com,SecurePass123!,IT,Systems Engineer,+1234567890,TRUE
+Jane Smith,jane.smith@contoso.com,SecurePass123!,HR,HR Manager,+1234567891,TRUE
+Mike Johnson,mike.johnson@contoso.com,SecurePass123!,Finance,Accountant,+1234567892,TRUE

@@ -1,0 +1,4 @@
+UserPrincipalName,GroupIds
+john.doe@contoso.com,"IT Staff,VPN Users,Project X Team"
+jane.smith@contoso.com,"HR Staff,VPN Users"
+mike.johnson@contoso.com,"Finance Staff,VPN Users"

@@ -57,42 +57,6 @@ function Connect-MK365Device {
 }
 
 function Get-MK365DeviceOverview {
-    <#
-    .SYNOPSIS
-    Retrieves an overview of all managed devices in Intune.
-
-    .DESCRIPTION
-    The Get-MK365DeviceOverview function provides a comprehensive overview of managed devices,
-    including device counts by OS, ownership type, compliance state, and management status.
-    Can export results in both CSV and HTML formats.
-
-    .PARAMETER ExportReport
-    Switch parameter. When specified, exports the device overview to a report file.
-
-    .PARAMETER ReportFormat
-    Optional. Specifies the report format. Valid values are 'CSV', 'HTML', or 'Both'.
-    Default is 'CSV'.
-
-    .PARAMETER OutputPath
-    Optional. Specifies the output directory for the report files.
-    Default is the current directory.
-
-    .EXAMPLE
-    Get-MK365DeviceOverview
-    Returns device overview as PowerShell objects.
-
-    .EXAMPLE
-    Get-MK365DeviceOverview -ExportReport -ReportFormat HTML
-    Generates an HTML report of the device overview.
-
-    .EXAMPLE
-    Get-MK365DeviceOverview -ExportReport -ReportFormat Both -OutputPath "C:\Reports"
-    Generates both CSV and HTML reports in the specified directory.
-
-    .NOTES
-    Requires the following Microsoft Graph permissions:
-    - DeviceManagementManagedDevices.Read.All
-    #>
     [CmdletBinding()]
     param(
         [Parameter()]
@@ -111,51 +75,83 @@ function Get-MK365DeviceOverview {
         
         Write-M365Log "Retrieving device overview..."
         
-        # Get all devices
+        # Get all managed devices using Microsoft Graph cmdlets
         $devices = Get-MgDeviceManagementManagedDevice -All
         
-        # Create overview object
+        # Get additional device details
+        $deviceDetails = foreach ($device in $devices) {
+            $compliancePolicy = Get-MgDeviceManagementDeviceCompliancePolicy -Filter "id eq '$($device.CompliancePolicyId)'" -ErrorAction SilentlyContinue
+            $configurationProfile = Get-MgDeviceManagementDeviceConfiguration -Filter "id eq '$($device.ConfigurationProfileId)'" -ErrorAction SilentlyContinue
+            
+            [PSCustomObject]@{
+                DeviceName = $device.DeviceName
+                SerialNumber = $device.SerialNumber
+                OS = $device.OperatingSystem
+                OSVersion = $device.OsVersion
+                Owner = $device.ManagedDeviceOwnerType
+                Compliance = $device.ComplianceState
+                LastSync = $device.LastSyncDateTime
+                Manufacturer = $device.Manufacturer
+                Model = $device.Model
+                CompliancePolicy = $compliancePolicy.DisplayName
+                ConfigurationProfile = $configurationProfile.DisplayName
+                SupervisorStatus = $device.IsSupervised
+                EncryptionStatus = $device.EncryptionState
+                ManagementAgent = $device.ManagementAgent
+                JoinType = $device.JoinType
+                EnrollmentType = $device.EnrollmentType
+                AADRegistered = $device.AzureADRegistered
+                AutoPilotEnrolled = $device.AutoPilotEnrolled
+                UserPrincipalName = $device.UserPrincipalName
+            }
+        }
+        
+        # Create overview object with enhanced details
         $overview = @{
             TotalDevices = $devices.Count
             LastUpdated = Get-Date
             
-            OperatingSystem = $devices | Group-Object -Property OperatingSystem | Select-Object @{
-                Name = 'OS'; Expression = { $_.Name }
-            }, @{
-                Name = 'Count'; Expression = { $_.Count }
+            OperatingSystem = $devices | Group-Object -Property OperatingSystem | ForEach-Object {
+                [PSCustomObject]@{
+                    OS = $_.Name
+                    Count = $_.Count
+                    Percentage = [math]::Round(($_.Count / $devices.Count) * 100, 2)
+                }
             }
             
-            OwnershipType = $devices | Group-Object -Property ManagedDeviceOwnerType | Select-Object @{
-                Name = 'Type'; Expression = { $_.Name }
-            }, @{
-                Name = 'Count'; Expression = { $_.Count }
+            OwnershipType = $devices | Group-Object -Property ManagedDeviceOwnerType | ForEach-Object {
+                [PSCustomObject]@{
+                    Type = $_.Name
+                    Count = $_.Count
+                    Percentage = [math]::Round(($_.Count / $devices.Count) * 100, 2)
+                }
             }
             
-            ComplianceState = $devices | Group-Object -Property ComplianceState | Select-Object @{
-                Name = 'State'; Expression = { $_.Name }
-            }, @{
-                Name = 'Count'; Expression = { $_.Count }
+            ComplianceState = $devices | Group-Object -Property ComplianceState | ForEach-Object {
+                [PSCustomObject]@{
+                    State = $_.Name
+                    Count = $_.Count
+                    Percentage = [math]::Round(($_.Count / $devices.Count) * 100, 2)
+                }
             }
             
-            ManagementState = $devices | Group-Object -Property ManagementState | Select-Object @{
-                Name = 'State'; Expression = { $_.Name }
-            }, @{
-                Name = 'Count'; Expression = { $_.Count }
+            ManagementState = $devices | Group-Object -Property ManagementState | ForEach-Object {
+                [PSCustomObject]@{
+                    State = $_.Name
+                    Count = $_.Count
+                    Percentage = [math]::Round(($_.Count / $devices.Count) * 100, 2)
+                }
             }
             
-            DeviceDetails = $devices | Select-Object @{
-                Name = 'DeviceName'; Expression = { $_.DeviceName }
-            }, @{
-                Name = 'OS'; Expression = { $_.OperatingSystem }
-            }, @{
-                Name = 'OSVersion'; Expression = { $_.OSVersion }
-            }, @{
-                Name = 'Owner'; Expression = { $_.ManagedDeviceOwnerType }
-            }, @{
-                Name = 'Compliance'; Expression = { $_.ComplianceState }
-            }, @{
-                Name = 'LastSync'; Expression = { $_.LastSyncDateTime }
+            EnrollmentType = $devices | Group-Object -Property EnrollmentType | ForEach-Object {
+                [PSCustomObject]@{
+                    Type = $_.Name
+                    Count = $_.Count
+                    Percentage = [math]::Round(($_.Count / $devices.Count) * 100, 2)
+                }
             }
+            
+            DeviceDetails = $deviceDetails
         }
         
         # Export report if requested
@@ -173,7 +169,7 @@ function Get-MK365DeviceOverview {
             if ($ReportFormat -in 'HTML', 'Both') {
                 $htmlPath = Join-Path $OutputPath "DeviceOverview-$timestamp.html"
                 
-                # Create HTML report
+                # Create HTML report with enhanced styling and charts
                 $htmlReport = @"
 <!DOCTYPE html>
 <html>
@@ -188,71 +184,103 @@ function Get-MK365DeviceOverview {
         tr:nth-child(even) { background-color: #f9f9f9; }
         .summary { margin-bottom: 30px; }
         .chart { margin: 20px 0; }
+        .status-good { color: #27ae60; }
+        .status-warning { color: #f39c12; }
+        .status-error { color: #c0392b; }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <h1>Device Overview Report</h1>
     <p>Generated: $($overview.LastUpdated)</p>
-    <p>Total Devices: $($overview.TotalDevices)</p>
-
-    <div class="summary">
-        <h2>Operating System Distribution</h2>
-        <table>
-            <tr><th>Operating System</th><th>Count</th></tr>
-            $(($overview.OperatingSystem | ForEach-Object { "<tr><td>$($_.OS)</td><td>$($_.Count)</td></tr>" }) -join "`n")
-        </table>
+    
+    <div class="card">
+        <h2>Summary</h2>
+        <p>Total Devices: $($overview.TotalDevices)</p>
     </div>
 
     <div class="summary">
-        <h2>Ownership Type Distribution</h2>
+        <h2>Operating System Distribution</h2>
+        <canvas id="osChart"></canvas>
         <table>
-            <tr><th>Type</th><th>Count</th></tr>
-            $(($overview.OwnershipType | ForEach-Object { "<tr><td>$($_.Type)</td><td>$($_.Count)</td></tr>" }) -join "`n")
+            <tr><th>Operating System</th><th>Count</th><th>Percentage</th></tr>
+            $(foreach ($os in $overview.OperatingSystem) {
+                "<tr><td>$($os.OS)</td><td>$($os.Count)</td><td>$($os.Percentage)%</td></tr>"
+            })
         </table>
     </div>
 
     <div class="summary">
         <h2>Compliance State</h2>
+        <canvas id="complianceChart"></canvas>
         <table>
-            <tr><th>State</th><th>Count</th></tr>
-            $(($overview.ComplianceState | ForEach-Object { "<tr><td>$($_.State)</td><td>$($_.Count)</td></tr>" }) -join "`n")
+            <tr><th>State</th><th>Count</th><th>Percentage</th></tr>
+            $(foreach ($state in $overview.ComplianceState) {
+                "<tr><td>$($state.State)</td><td>$($state.Count)</td><td>$($state.Percentage)%</td></tr>"
+            })
         </table>
     </div>
 
     <div class="summary">
-        <h2>Management State</h2>
-        <table>
-            <tr><th>State</th><th>Count</th></tr>
-            $(($overview.ManagementState | ForEach-Object { "<tr><td>$($_.State)</td><td>$($_.Count)</td></tr>" }) -join "`n")
-        </table>
-    </div>
-
-    <div class="details">
         <h2>Device Details</h2>
         <table>
             <tr>
                 <th>Device Name</th>
                 <th>OS</th>
-                <th>OS Version</th>
+                <th>Version</th>
                 <th>Owner</th>
                 <th>Compliance</th>
                 <th>Last Sync</th>
             </tr>
-            $(($overview.DeviceDetails | ForEach-Object {
+            $(foreach ($device in $overview.DeviceDetails) {
                 "<tr>
-                    <td>$($_.DeviceName)</td>
-                    <td>$($_.OS)</td>
-                    <td>$($_.OSVersion)</td>
-                    <td>$($_.Owner)</td>
-                    <td>$($_.Compliance)</td>
-                    <td>$($_.LastSync)</td>
+                    <td>$($device.DeviceName)</td>
+                    <td>$($device.OS)</td>
+                    <td>$($device.OSVersion)</td>
+                    <td>$($device.Owner)</td>
+                    <td>$($device.Compliance)</td>
+                    <td>$($device.LastSync)</td>
                 </tr>"
-            }) -join "`n")
+            })
         </table>
     </div>
+
+    <script>
+        // OS Distribution Chart
+        new Chart(document.getElementById('osChart').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: [$(($overview.OperatingSystem | ForEach-Object { "'$($_.OS)'" }) -join ',')],
+                datasets: [{
+                    data: [$(($overview.OperatingSystem | ForEach-Object { $_.Count }) -join ',')],
+                    backgroundColor: ['#2ecc71', '#3498db', '#9b59b6', '#e74c3c', '#f1c40f']
+                }]
+            }
+        });
+
+        // Compliance Chart
+        new Chart(document.getElementById('complianceChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: [$(($overview.ComplianceState | ForEach-Object { "'$($_.State)'" }) -join ',')],
+                datasets: [{
+                    data: [$(($overview.ComplianceState | ForEach-Object { $_.Count }) -join ',')],
+                    backgroundColor: ['#27ae60', '#e74c3c', '#f39c12']
+                }]
+            }
+        });
+    </script>
 </body>
 </html>
 "@
+                
                 $htmlReport | Out-File -FilePath $htmlPath -Encoding UTF8
                 Write-M365Log "HTML report exported to: $htmlPath"
             }
@@ -327,58 +355,146 @@ function Register-MK365AutopilotDevices {
         [string]$CsvPath,
         
         [Parameter()]
-        [string]$GroupTag,
+        [string]$GroupId,
         
         [Parameter()]
-        [switch]$AssignUser
+        [switch]$AssignToGroup,
+        
+        [Parameter()]
+        [switch]$WaitForRegistration
     )
     
     try {
         Connect-MK365Device
         
-        Write-M365Log "Importing devices from CSV: $CsvPath"
-        $devices = Import-Csv -Path $CsvPath
+        Write-M365Log "Starting Autopilot device registration process..."
         
-        $results = @{
-            Successful = @()
-            Failed = @()
+        # Verify CSV file exists and has required headers
+        if (-not (Test-Path $CsvPath)) {
+            throw "CSV file not found: $CsvPath"
         }
         
-        foreach ($device in $devices) {
+        $devices = Import-Csv -Path $CsvPath
+        $requiredHeaders = @('SerialNumber', 'HardwareIdentifier')
+        $missingHeaders = $requiredHeaders | Where-Object { $_ -notin $devices[0].PSObject.Properties.Name }
+        if ($missingHeaders) {
+            throw "CSV file missing required headers: $($missingHeaders -join ', ')"
+        }
+        
+        Write-M365Log "Found $($devices.Count) devices in CSV file"
+        
+        # Process each device
+        $registeredDevices = foreach ($device in $devices) {
             try {
-                $params = @{
+                Write-M365Log "Processing device with serial number: $($device.SerialNumber)"
+                
+                # Check if device already exists
+                $existingDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "serialNumber eq '$($device.SerialNumber)'"
+                if ($existingDevice) {
+                    Write-M365Log "Device already registered in Autopilot: $($device.SerialNumber)" -Level Warning
+                    continue
+                }
+                
+                # Prepare device registration parameters
+                $autopilotDevice = @{
                     SerialNumber = $device.SerialNumber
-                    Manufacturer = $device.Manufacturer
-                    Model = $device.Model
+                    HardwareIdentifier = $device.HardwareIdentifier
+                    ProductKey = if ($device.ProductKey) { $device.ProductKey } else { $null }
+                    GroupTag = if ($device.GroupTag) { $device.GroupTag } else { $null }
                 }
                 
-                if ($GroupTag) {
-                    $params.GroupTag = $GroupTag
+                # Register device using Microsoft Graph
+                $newDevice = New-MgDeviceManagementWindowsAutopilotDeviceIdentity -BodyParameter $autopilotDevice
+                
+                # If group assignment is requested and GroupId is provided
+                if ($AssignToGroup -and $GroupId) {
+                    Write-M365Log "Assigning device to group: $GroupId"
+                    $groupAssignment = @{
+                        "@odata.type" = "#microsoft.graph.windowsAutopilotDeviceIdentity"
+                        GroupId = $GroupId
+                    }
+                    Update-MgDeviceManagementWindowsAutopilotDeviceIdentity -WindowsAutopilotDeviceIdentityId $newDevice.Id -BodyParameter $groupAssignment
                 }
                 
-                if ($AssignUser -and $device.AssignedUser) {
-                    $params.AssignedUser = $device.AssignedUser
+                # If wait for registration is requested
+                if ($WaitForRegistration) {
+                    Write-M365Log "Waiting for device registration to complete..."
+                    $attempts = 0
+                    $maxAttempts = 30
+                    $registered = $false
+                    
+                    do {
+                        $deviceStatus = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -WindowsAutopilotDeviceIdentityId $newDevice.Id
+                        if ($deviceStatus.EnrollmentState -eq 'enrolled') {
+                            $registered = $true
+                            Write-M365Log "Device registration completed: $($device.SerialNumber)"
+                            break
+                        }
+                        
+                        $attempts++
+                        if ($attempts -ge $maxAttempts) {
+                            Write-M365Log "Device registration timeout: $($device.SerialNumber)" -Level Warning
+                            break
+                        }
+                        
+                        Start-Sleep -Seconds 10
+                    } while (-not $registered)
                 }
                 
-                $newDevice = New-MgDeviceManagementWindowsAutopilotDeviceIdentity -BodyParameter $params
-                $results.Successful += $device.SerialNumber
-                Write-M365Log "Successfully registered device: $($device.SerialNumber)"
+                # Return device information
+                [PSCustomObject]@{
+                    SerialNumber = $device.SerialNumber
+                    Id = $newDevice.Id
+                    Status = if ($WaitForRegistration) {
+                        if ($registered) { "Registered" } else { "Registration Pending" }
+                    } else {
+                        "Registration Initiated"
+                    }
+                    GroupAssigned = if ($AssignToGroup -and $GroupId) { $GroupId } else { $null }
+                    EnrollmentState = $deviceStatus.EnrollmentState
+                    LastContactDateTime = $deviceStatus.LastContactDateTime
+                }
             }
             catch {
-                $results.Failed += @{
+                Write-M365Log "Error processing device $($device.SerialNumber): $_" -Level Error
+                [PSCustomObject]@{
                     SerialNumber = $device.SerialNumber
+                    Id = $null
+                    Status = "Failed"
                     Error = $_.Exception.Message
                 }
-                Write-M365Log "Failed to register device $($device.SerialNumber): $_" -Level Error
             }
         }
         
-        # Generate summary
-        Write-M365Log "Registration complete. Success: $($results.Successful.Count), Failed: $($results.Failed.Count)"
-        return $results
+        # Generate registration summary
+        $summary = @{
+            TotalDevices = $devices.Count
+            Registered = ($registeredDevices | Where-Object Status -eq "Registered").Count
+            Pending = ($registeredDevices | Where-Object Status -eq "Registration Initiated").Count
+            Failed = ($registeredDevices | Where-Object Status -eq "Failed").Count
+            GroupAssignments = if ($AssignToGroup -and $GroupId) {
+                ($registeredDevices | Where-Object GroupAssigned -eq $GroupId).Count
+            } else {
+                0
+            }
+        }
+        
+        Write-M365Log "Registration Summary:"
+        Write-M365Log "Total Devices: $($summary.TotalDevices)"
+        Write-M365Log "Successfully Registered: $($summary.Registered)"
+        Write-M365Log "Registration Pending: $($summary.Pending)"
+        Write-M365Log "Failed: $($summary.Failed)"
+        if ($AssignToGroup -and $GroupId) {
+            Write-M365Log "Group Assignments: $($summary.GroupAssignments)"
+        }
+        
+        return [PSCustomObject]@{
+            Summary = $summary
+            Devices = $registeredDevices
+        }
     }
     catch {
-        Write-M365Log "Error during bulk device registration: $_" -Level Error
+        Write-M365Log "Error in Autopilot device registration: $_" -Level Error
         throw $_
     }
 }
@@ -404,10 +520,10 @@ function Get-MK365DeviceCompliance {
         # Get all managed devices
         $devices = Get-MgDeviceManagementManagedDevice -All
         if ($DeviceFilter) {
-            $devices = $devices | Where-Object { 
-                $_.DeviceName -like $DeviceFilter -or 
-                $_.SerialNumber -like $DeviceFilter -or 
-                $_.UserPrincipalName -like $DeviceFilter
+            $devices = $devices | Where-Object {
+                $_.DeviceName -like "*$DeviceFilter*" -or
+                $_.SerialNumber -like "*$DeviceFilter*" -or
+                $_.UserPrincipalName -like "*$DeviceFilter*"
             }
         }
         
@@ -451,54 +567,14 @@ function Get-MK365DeviceCompliance {
 }
 
 function Get-MK365AppDeploymentStatus {
-    <#
-    .SYNOPSIS
-    Retrieves deployment status for Intune applications.
-
-    .DESCRIPTION
-    The Get-MK365AppDeploymentStatus function provides detailed information about the deployment status of applications in Microsoft Intune. It can track deployment assignments, installation status, and generate reports for analysis.
-
-    .PARAMETER AppDisplayName
-    Optional. Filter applications by display name. Supports wildcards.
-
-    .PARAMETER AppType
-    Optional. Filter applications by type. Valid values are: 'All', 'Win32', 'iOS', 'Android', 'WindowsMobile', 'MacOS'.
-    Default value is 'All'.
-
-    .PARAMETER IncludeDeviceStatus
-    Switch parameter. When specified, includes detailed installation status for each device.
-
-    .PARAMETER ExportReport
-    Switch parameter. When specified, exports the deployment status to a CSV file.
-
-    .EXAMPLE
-    Get-MK365AppDeploymentStatus
-    Retrieves deployment status for all applications.
-
-    .EXAMPLE
-    Get-MK365AppDeploymentStatus -AppDisplayName "Microsoft Teams" -IncludeDeviceStatus
-    Retrieves detailed deployment status for Microsoft Teams, including per-device installation status.
-
-    .EXAMPLE
-    Get-MK365AppDeploymentStatus -AppType Win32 -ExportReport
-    Retrieves deployment status for Win32 applications and exports the results to a CSV file.
-
-    .NOTES
-    Requires the following Microsoft Graph permissions:
-    - DeviceManagementApps.Read.All
-    - DeviceManagementManagedDevices.Read.All
-    #>
     [CmdletBinding()]
     param(
         [Parameter()]
-        [string]$AppDisplayName,
+        [string]$AppName,
         
         [Parameter()]
-        [ValidateSet('All', 'Win32', 'iOS', 'Android', 'WindowsMobile', 'MacOS')]
-        [string]$AppType = 'All',
-        
-        [Parameter()]
-        [switch]$IncludeDeviceStatus,
+        [ValidateSet('All', 'Installed', 'Failed', 'Pending')]
+        [string]$Status = 'All',
         
         [Parameter()]
         [switch]$ExportReport
@@ -506,166 +582,92 @@ function Get-MK365AppDeploymentStatus {
     
     try {
         Connect-MK365Device
-        
-        Write-M365Log "Retrieving application deployment status..."
+        Write-M365Log "Retrieving app deployment status..."
         
         # Get all mobile apps
-        $apps = Get-MgDeviceAppManagementMobileApp -All | Where-Object {
-            $AppType -eq 'All' -or $_.AdditionalProperties.'@odata.type' -like "*$AppType*"
-        }
-        
-        if ($AppDisplayName) {
-            $apps = $apps | Where-Object { $_.DisplayName -like "*$AppDisplayName*" }
+        $apps = Get-MgDeviceAppManagementMobileApp -All
+        if ($AppName) {
+            $apps = $apps | Where-Object { $_.DisplayName -like "*$AppName*" }
         }
         
         $deploymentStatus = foreach ($app in $apps) {
-            $assignments = Get-MgDeviceAppManagementMobileAppAssignment -MobileAppId $app.Id
+            Write-M365Log "Processing app: $($app.DisplayName)"
             
-            $status = @{
-                AppId = $app.Id
-                DisplayName = $app.DisplayName
-                AppType = $app.AdditionalProperties.'@odata.type'
-                Publisher = $app.Publisher
-                Version = $app.Version
-                Assignments = @()
-                DeviceStatus = @()
-                Summary = @{
-                    TotalDevices = 0
-                    Installed = 0
-                    Failed = 0
-                    Pending = 0
-                }
+            # Get app installation states
+            $installStates = Get-MgDeviceAppManagementMobileAppInstallStatus -MobileAppId $app.Id
+            
+            # Filter by status if specified
+            if ($Status -ne 'All') {
+                $installStates = $installStates | Where-Object { $_.InstallState -eq $Status }
             }
             
-            foreach ($assignment in $assignments) {
-                $groupId = $assignment.Target.AdditionalProperties.groupId
-                $groupName = if ($groupId) {
-                    (Get-MgGroup -GroupId $groupId).DisplayName
-                } else {
-                    "All Users/Devices"
-                }
+            foreach ($state in $installStates) {
+                # Get device details
+                $device = Get-MgDeviceManagementManagedDevice -ManagedDeviceId $state.DeviceId
                 
-                $status.Assignments += @{
-                    GroupName = $groupName
-                    Intent = $assignment.Intent
-                    FilterEnabled = $assignment.Filter -ne $null
+                [PSCustomObject]@{
+                    AppName = $app.DisplayName
+                    AppId = $app.Id
+                    DeviceName = $device.DeviceName
+                    DeviceId = $device.Id
+                    UserPrincipalName = $device.UserPrincipalName
+                    InstallState = $state.InstallState
+                    LastModifiedDateTime = $state.LastModifiedDateTime
+                    ErrorCode = $state.ErrorCode
+                    ErrorDescription = if ($state.ErrorCode) {
+                        Get-MK365ErrorDescription -ErrorCode $state.ErrorCode -ErrorType 'AppInstall'
+                    } else { $null }
                 }
             }
-            
-            if ($IncludeDeviceStatus) {
-                $deviceStatus = Get-MgDeviceAppManagementMobileAppInstallStatus -MobileAppId $app.Id
-                foreach ($device in $deviceStatus) {
-                    $deviceInfo = Get-MgDeviceManagementManagedDevice -ManagedDeviceId $device.DeviceId
-                    $status.DeviceStatus += @{
-                        DeviceName = $deviceInfo.DeviceName
-                        UserPrincipalName = $deviceInfo.UserPrincipalName
-                        InstallState = $device.InstallState
-                        InstallStateDetail = $device.InstallStateDetail
-                        LastModifiedDateTime = $device.LastModifiedDateTime
-                    }
-                    
-                    # Update summary
-                    $status.Summary.TotalDevices++
-                    switch ($device.InstallState) {
-                        "installed" { $status.Summary.Installed++ }
-                        "failed" { $status.Summary.Failed++ }
-                        default { $status.Summary.Pending++ }
-                    }
-                }
-            }
-            
-            [PSCustomObject]$status
         }
         
+        # Generate summary
+        $summary = @{
+            TotalApps = $apps.Count
+            TotalDevices = ($deploymentStatus | Select-Object DeviceId -Unique).Count
+            StatusBreakdown = $deploymentStatus | Group-Object InstallState | ForEach-Object {
+                @{
+                    Status = $_.Name
+                    Count = $_.Count
+                }
+            }
+        }
+        
+        Write-M365Log "Deployment Status Summary:"
+        Write-M365Log "Total Apps: $($summary.TotalApps)"
+        Write-M365Log "Total Devices: $($summary.TotalDevices)"
+        Write-M365Log "Status Breakdown:"
+        foreach ($status in $summary.StatusBreakdown) {
+            Write-M365Log "  $($status.Status): $($status.Count)"
+        }
+        
+        # Export report if requested
         if ($ExportReport) {
-            $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-            $reportPath = Join-Path (Get-Location) "AppDeploymentStatus-$timestamp.csv"
-            
-            if ($IncludeDeviceStatus) {
-                $flattenedStatus = foreach ($app in $deploymentStatus) {
-                    foreach ($device in $app.DeviceStatus) {
-                        [PSCustomObject]@{
-                            AppDisplayName = $app.DisplayName
-                            AppType = $app.AppType
-                            Publisher = $app.Publisher
-                            Version = $app.Version
-                            DeviceName = $device.DeviceName
-                            UserPrincipalName = $device.UserPrincipalName
-                            InstallState = $device.InstallState
-                            InstallStateDetail = $device.InstallStateDetail
-                            LastModified = $device.LastModifiedDateTime
-                        }
-                    }
-                }
-                $flattenedStatus | Export-Csv -Path $reportPath -NoTypeInformation
-            } else {
-                $deploymentStatus | Select-Object DisplayName, AppType, Publisher, Version, 
-                    @{N='TotalDevices';E={$_.Summary.TotalDevices}},
-                    @{N='Installed';E={$_.Summary.Installed}},
-                    @{N='Failed';E={$_.Summary.Failed}},
-                    @{N='Pending';E={$_.Summary.Pending}} |
-                    Export-Csv -Path $reportPath -NoTypeInformation
-            }
-            
-            Write-M365Log "Deployment status report exported to: $reportPath"
+            $reportPath = Join-Path -Path (Get-Location) -ChildPath "AppDeploymentStatus_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+            $deploymentStatus | Export-Csv -Path $reportPath -NoTypeInformation
+            Write-M365Log "Report exported to: $reportPath"
         }
         
-        return $deploymentStatus
+        return [PSCustomObject]@{
+            Summary = $summary
+            Details = $deploymentStatus
+        }
     }
     catch {
-        Write-M365Log "Error retrieving application deployment status: $_" -Level Error
+        Write-M365Log "Error retrieving app deployment status: $_" -Level Error
         throw $_
     }
 }
 
 function Get-MK365SecurityBaseline {
-    <#
-    .SYNOPSIS
-    Retrieves security baseline compliance status for Intune-managed devices.
-
-    .DESCRIPTION
-    The Get-MK365SecurityBaseline function evaluates device compliance against security baselines in Microsoft Intune.
-    It provides detailed information about security settings, compliance status, and remediation recommendations.
-
-    .PARAMETER BaselineName
-    Optional. Filter results by security baseline name. Supports wildcards.
-
-    .PARAMETER DeviceFilter
-    Optional. Filter devices by name, serial number, or user principal name. Supports wildcards.
-
-    .PARAMETER IncludeSettings
-    Switch parameter. When specified, includes detailed settings for each security baseline.
-
-    .PARAMETER ExportReport
-    Switch parameter. When specified, exports the baseline compliance status to a CSV file.
-
-    .EXAMPLE
-    Get-MK365SecurityBaseline
-    Retrieves compliance status for all security baselines.
-
-    .EXAMPLE
-    Get-MK365SecurityBaseline -BaselineName "Windows 10 Security" -IncludeSettings
-    Retrieves detailed settings for the Windows 10 security baseline.
-
-    .EXAMPLE
-    Get-MK365SecurityBaseline -DeviceFilter "LAP-*" -ExportReport
-    Retrieves baseline compliance for devices matching the pattern and exports to CSV.
-
-    .NOTES
-    Requires the following Microsoft Graph permissions:
-    - DeviceManagementConfiguration.Read.All
-    - DeviceManagementManagedDevices.Read.All
-    #>
     [CmdletBinding()]
     param(
         [Parameter()]
         [string]$BaselineName,
         
         [Parameter()]
-        [string]$DeviceFilter,
-        
-        [Parameter()]
-        [switch]$IncludeSettings,
+        [ValidateSet('All', 'Compliant', 'NonCompliant', 'Error', 'Conflict')]
+        [string]$ComplianceStatus = 'All',
         
         [Parameter()]
         [switch]$ExportReport
@@ -673,109 +675,85 @@ function Get-MK365SecurityBaseline {
     
     try {
         Connect-MK365Device
+        Write-M365Log "Retrieving security baseline status..."
         
-        Write-M365Log "Retrieving security baseline information..."
-        
-        # Get all security baselines
-        $baselines = Get-MgDeviceManagementSecurityBaseline -All
+        # Get security baselines
+        $baselines = Get-MgDeviceManagementSecurityBaseline
         if ($BaselineName) {
             $baselines = $baselines | Where-Object { $_.DisplayName -like "*$BaselineName*" }
         }
         
         $baselineStatus = foreach ($baseline in $baselines) {
+            Write-M365Log "Processing baseline: $($baseline.DisplayName)"
+            
+            # Get baseline device states
             $deviceStates = Get-MgDeviceManagementSecurityBaselineDeviceState -SecurityBaselineId $baseline.Id
             
-            if ($DeviceFilter) {
-                $deviceStates = $deviceStates | Where-Object {
-                    $deviceInfo = Get-MgDeviceManagementManagedDevice -ManagedDeviceId $_.DeviceId
-                    $deviceInfo.DeviceName -like "*$DeviceFilter*" -or
-                    $deviceInfo.SerialNumber -like "*$DeviceFilter*" -or
-                    $deviceInfo.UserPrincipalName -like "*$DeviceFilter*"
-                }
-            }
-            
-            $status = @{
-                BaselineId = $baseline.Id
-                DisplayName = $baseline.DisplayName
-                Description = $baseline.Description
-                CreatedDateTime = $baseline.CreatedDateTime
-                LastModifiedDateTime = $baseline.LastModifiedDateTime
-                DeviceStates = @()
-                Settings = @()
-                Summary = @{
-                    TotalDevices = $deviceStates.Count
-                    Compliant = ($deviceStates | Where-Object { $_.State -eq 'compliant' }).Count
-                    NonCompliant = ($deviceStates | Where-Object { $_.State -eq 'noncompliant' }).Count
-                    Error = ($deviceStates | Where-Object { $_.State -eq 'error' }).Count
-                    Conflict = ($deviceStates | Where-Object { $_.State -eq 'conflict' }).Count
-                }
+            # Filter by compliance status if specified
+            if ($ComplianceStatus -ne 'All') {
+                $deviceStates = $deviceStates | Where-Object { $_.Status -eq $ComplianceStatus }
             }
             
             foreach ($state in $deviceStates) {
-                $deviceInfo = Get-MgDeviceManagementManagedDevice -ManagedDeviceId $state.DeviceId
-                $status.DeviceStates += @{
-                    DeviceName = $deviceInfo.DeviceName
-                    UserPrincipalName = $deviceInfo.UserPrincipalName
-                    ComplianceState = $state.State
+                # Get device details
+                $device = Get-MgDeviceManagementManagedDevice -ManagedDeviceId $state.DeviceId
+                
+                [PSCustomObject]@{
+                    BaselineName = $baseline.DisplayName
+                    BaselineId = $baseline.Id
+                    DeviceName = $device.DeviceName
+                    DeviceId = $device.Id
+                    UserPrincipalName = $device.UserPrincipalName
+                    Status = $state.Status
                     LastSyncDateTime = $state.LastSyncDateTime
                     ErrorCount = $state.ErrorCount
-                }
-            }
-            
-            if ($IncludeSettings) {
-                $settings = Get-MgDeviceManagementSecurityBaselineSetting -SecurityBaselineId $baseline.Id
-                foreach ($setting in $settings) {
-                    $status.Settings += @{
-                        SettingName = $setting.SettingName
-                        SettingCategory = $setting.SettingCategory
-                        CurrentValue = $setting.CurrentValue
-                        RequiredValue = $setting.RequiredValue
-                        ComplianceStatus = if ($setting.CurrentValue -eq $setting.RequiredValue) { 'Compliant' } else { 'NonCompliant' }
-                    }
-                }
-            }
-            
-            [PSCustomObject]$status
-        }
-        
-        if ($ExportReport) {
-            $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-            $reportPath = Join-Path (Get-Location) "SecurityBaseline-$timestamp.csv"
-            
-            if ($IncludeSettings) {
-                $flattenedStatus = foreach ($baseline in $baselineStatus) {
-                    foreach ($setting in $baseline.Settings) {
-                        [PSCustomObject]@{
-                            BaselineName = $baseline.DisplayName
-                            SettingName = $setting.SettingName
-                            Category = $setting.SettingCategory
-                            CurrentValue = $setting.CurrentValue
-                            RequiredValue = $setting.RequiredValue
-                            ComplianceStatus = $setting.ComplianceStatus
-                            TotalDevices = $baseline.Summary.TotalDevices
-                            CompliantDevices = $baseline.Summary.Compliant
-                            NonCompliantDevices = $baseline.Summary.NonCompliant
+                    ConflictCount = $state.ConflictCount
+                    Settings = $state.Settings | ForEach-Object {
+                        @{
+                            SettingName = $_.SettingName
+                            SettingValue = $_.Value
+                            Status = $_.Status
+                            ErrorCode = $_.ErrorCode
                         }
                     }
                 }
-            } else {
-                $flattenedStatus = $baselineStatus | Select-Object DisplayName,
-                    @{N='TotalDevices';E={$_.Summary.TotalDevices}},
-                    @{N='CompliantDevices';E={$_.Summary.Compliant}},
-                    @{N='NonCompliantDevices';E={$_.Summary.NonCompliant}},
-                    @{N='ErrorDevices';E={$_.Summary.Error}},
-                    @{N='ConflictDevices';E={$_.Summary.Conflict}},
-                    LastModifiedDateTime
             }
-            
-            $flattenedStatus | Export-Csv -Path $reportPath -NoTypeInformation
-            Write-M365Log "Security baseline report exported to: $reportPath"
         }
         
-        return $baselineStatus
+        # Generate summary
+        $summary = @{
+            TotalBaselines = $baselines.Count
+            TotalDevices = ($baselineStatus | Select-Object DeviceId -Unique).Count
+            ComplianceBreakdown = $baselineStatus | Group-Object Status | ForEach-Object {
+                @{
+                    Status = $_.Name
+                    Count = $_.Count
+                }
+            }
+        }
+        
+        Write-M365Log "Security Baseline Summary:"
+        Write-M365Log "Total Baselines: $($summary.TotalBaselines)"
+        Write-M365Log "Total Devices: $($summary.TotalDevices)"
+        Write-M365Log "Compliance Breakdown:"
+        foreach ($status in $summary.ComplianceBreakdown) {
+            Write-M365Log "  $($status.Status): $($status.Count)"
+        }
+        
+        # Export report if requested
+        if ($ExportReport) {
+            $reportPath = Join-Path -Path (Get-Location) -ChildPath "SecurityBaselineStatus_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+            $baselineStatus | Export-Csv -Path $reportPath -NoTypeInformation
+            Write-M365Log "Report exported to: $reportPath"
+        }
+        
+        return [PSCustomObject]@{
+            Summary = $summary
+            Details = $baselineStatus
+        }
     }
     catch {
-        Write-M365Log "Error retrieving security baseline information: $_" -Level Error
+        Write-M365Log "Error retrieving security baseline status: $_" -Level Error
         throw $_
     }
 }
@@ -1215,57 +1193,14 @@ function Set-MK365DeviceGroupAssignment {
 }
 
 function Get-MK365SecurityStatus {
-    <#
-    .SYNOPSIS
-    Retrieves comprehensive security status for Intune-managed devices.
-
-    .DESCRIPTION
-    The Get-MK365SecurityStatus function provides a detailed security assessment of managed devices,
-    including encryption status, antivirus state, firewall configuration, security policies,
-    threat detection, and risk assessment scores.
-
-    .PARAMETER DeviceFilter
-    Optional. Filter devices by name, serial number, or user principal name. Supports wildcards.
-
-    .PARAMETER RiskLevel
-    Optional. Filter devices by risk level. Valid values are 'High', 'Medium', 'Low', or 'All'.
-    Default is 'All'.
-
-    .PARAMETER IncludeInactiveDevices
-    Switch parameter. When specified, includes devices that haven't checked in for more than 30 days.
-
-    .PARAMETER ExportReport
-    Switch parameter. When specified, exports the security status to a CSV file.
-
-    .EXAMPLE
-    Get-MK365SecurityStatus
-    Retrieves security status for all active devices.
-
-    .EXAMPLE
-    Get-MK365SecurityStatus -RiskLevel High -ExportReport
-    Retrieves and exports security status for high-risk devices.
-
-    .EXAMPLE
-    Get-MK365SecurityStatus -DeviceFilter "LAP-*" -IncludeInactiveDevices
-    Retrieves security status for specific devices, including inactive ones.
-
-    .NOTES
-    Requires the following Microsoft Graph permissions:
-    - DeviceManagementManagedDevices.Read.All
-    - DeviceManagementConfiguration.Read.All
-    - SecurityEvents.Read.All
-    #>
     [CmdletBinding()]
     param(
         [Parameter()]
         [string]$DeviceFilter,
         
         [Parameter()]
-        [ValidateSet('High', 'Medium', 'Low', 'All')]
-        [string]$RiskLevel = 'All',
-        
-        [Parameter()]
-        [switch]$IncludeInactiveDevices,
+        [ValidateSet('All', 'Compliant', 'NonCompliant', 'Error')]
+        [string]$ComplianceStatus = 'All',
         
         [Parameter()]
         [switch]$ExportReport
@@ -1273,200 +1208,125 @@ function Get-MK365SecurityStatus {
     
     try {
         Connect-MK365Device
-        
         Write-M365Log "Retrieving device security status..."
         
-        # Get devices based on filters
-        $devices = Get-MgDeviceManagementManagedDevice -All
-        if (-not $IncludeInactiveDevices) {
-            $thirtyDaysAgo = (Get-Date).AddDays(-30)
-            $devices = $devices | Where-Object { $_.LastSyncDateTime -gt $thirtyDaysAgo }
-        }
+        # Get compliance policies and their states
+        $policies = Get-MgDeviceManagementDeviceCompliancePolicy
+        $securityStatus = @()
         
-        if ($DeviceFilter) {
-            $devices = $devices | Where-Object {
-                $_.DeviceName -like "*$DeviceFilter*" -or
-                $_.SerialNumber -like "*$DeviceFilter*" -or
-                $_.UserPrincipalName -like "*$DeviceFilter*"
-            }
-        }
-        
-        # Get security baselines for compliance checking
-        $securityBaselines = Get-MK365SecurityBaseline
-        
-        # Process each device's security status
-        $securityStatus = foreach ($device in $devices) {
-            # Calculate risk score based on multiple factors
-            $riskFactors = @()
-            $riskScore = 0
+        foreach ($policy in $policies) {
+            $deviceStates = Get-MgDeviceManagementDeviceCompliancePolicyDeviceStatus -DeviceCompliancePolicyId $policy.Id
             
-            # Check encryption status
-            if (-not $device.IsEncrypted) {
-                $riskFactors += "Device not encrypted"
-                $riskScore += 30
+            if ($ComplianceStatus -ne 'All') {
+                $deviceStates = $deviceStates | Where-Object { $_.Status -eq $ComplianceStatus }
             }
             
-            # Check antivirus status
-            $defenderStatus = Get-MgDeviceManagementManagedDeviceWindowsDefenderState -ManagedDeviceId $device.Id
-            if ($defenderStatus.RealTimeProtectionEnabled -eq $false) {
-                $riskFactors += "Real-time protection disabled"
-                $riskScore += 25
-            }
-            if ($defenderStatus.SignatureUpdateDateTime -lt (Get-Date).AddDays(-7)) {
-                $riskFactors += "Antivirus signatures outdated"
-                $riskScore += 15
-            }
-            
-            # Check firewall status
-            $firewallStatus = Get-MgDeviceManagementManagedDeviceWindowsFirewallState -ManagedDeviceId $device.Id
-            if (-not ($firewallStatus.DomainProfileEnabled -and $firewallStatus.PrivateProfileEnabled)) {
-                $riskFactors += "Firewall disabled on one or more networks"
-                $riskScore += 20
-            }
-            
-            # Check security baseline compliance
-            $baselineStatus = $securityBaselines | Where-Object {
-                $_.DeviceStates | Where-Object { $_.DeviceName -eq $device.DeviceName }
-            }
-            $nonCompliantBaselines = $baselineStatus | Where-Object {
-                ($_.DeviceStates | Where-Object { $_.DeviceName -eq $device.DeviceName }).ComplianceState -eq 'noncompliant'
-            }
-            if ($nonCompliantBaselines) {
-                $riskFactors += "Non-compliant with $($nonCompliantBaselines.Count) security baselines"
-                $riskScore += (10 * $nonCompliantBaselines.Count)
-            }
-            
-            # Check for jailbreak/root
-            if ($device.JailBroken) {
-                $riskFactors += "Device is jailbroken/rooted"
-                $riskScore += 50
-            }
-            
-            # Determine risk level
-            $deviceRiskLevel = switch ($riskScore) {
-                { $_ -ge 50 } { 'High' }
-                { $_ -ge 25 } { 'Medium' }
-                default { 'Low' }
-            }
-            
-            # Filter by risk level if specified
-            if ($RiskLevel -ne 'All' -and $deviceRiskLevel -ne $RiskLevel) {
-                continue
-            }
-            
-            # Create security status object
-            [PSCustomObject]@{
-                DeviceName = $device.DeviceName
-                SerialNumber = $device.SerialNumber
-                UserPrincipalName = $device.UserPrincipalName
-                LastSyncDateTime = $device.LastSyncDateTime
-                OSVersion = $device.OSVersion
-                RiskLevel = $deviceRiskLevel
-                RiskScore = $riskScore
-                RiskFactors = $riskFactors -join '; '
-                IsEncrypted = $device.IsEncrypted
-                IsSupervised = $device.IsSupervised
-                JailBroken = $device.JailBroken
-                ComplianceState = $device.ComplianceState
-                AntivirusStatus = @{
-                    RealTimeProtection = $defenderStatus.RealTimeProtectionEnabled
-                    SignatureStatus = if ($defenderStatus.SignatureUpdateDateTime -gt (Get-Date).AddDays(-7)) { 'Current' } else { 'Outdated' }
-                    LastSignatureUpdate = $defenderStatus.SignatureUpdateDateTime
+            foreach ($state in $deviceStates) {
+                $device = Get-MgDeviceManagementManagedDevice -ManagedDeviceId $state.DeviceId
+                
+                if ($DeviceFilter -and -not ($device.DeviceName -like "*$DeviceFilter*" -or 
+                    $device.SerialNumber -like "*$DeviceFilter*" -or 
+                    $device.UserPrincipalName -like "*$DeviceFilter*")) {
+                    continue
                 }
-                FirewallStatus = @{
-                    DomainProfile = $firewallStatus.DomainProfileEnabled
-                    PrivateProfile = $firewallStatus.PrivateProfileEnabled
-                    PublicProfile = $firewallStatus.PublicProfileEnabled
-                }
-                SecurityBaselines = @{
-                    TotalBaselines = $baselineStatus.Count
-                    CompliantBaselines = ($baselineStatus | Where-Object {
-                        ($_.DeviceStates | Where-Object { $_.DeviceName -eq $device.DeviceName }).ComplianceState -eq 'compliant'
-                    }).Count
-                    NonCompliantBaselines = $nonCompliantBaselines.Count
+                
+                $securityStatus += [PSCustomObject]@{
+                    DeviceName = $device.DeviceName
+                    DeviceId = $device.Id
+                    UserPrincipalName = $device.UserPrincipalName
+                    PolicyName = $policy.DisplayName
+                    ComplianceStatus = $state.Status
+                    LastSyncDateTime = $state.LastReportedDateTime
+                    OS = $device.OperatingSystem
+                    OSVersion = $device.OsVersion
+                    JailBroken = $device.JailBroken
+                    ManagedBy = $device.ManagedDeviceOwnerType
+                    Supervised = $device.IsSupervised
+                    Encrypted = $device.IsEncrypted
+                    ComplianceGracePeriodExpirationDateTime = $state.ComplianceGracePeriodExpirationDateTime
+                    UserName = $device.UserDisplayName
                 }
             }
         }
         
-        # Export report if requested
+        # Get security baseline states
+        $baselines = Get-MgDeviceManagementSecurityBaseline
+        foreach ($baseline in $baselines) {
+            $deviceStates = Get-MgDeviceManagementSecurityBaselineDeviceState -SecurityBaselineId $baseline.Id
+            
+            foreach ($state in $deviceStates) {
+                $device = Get-MgDeviceManagementManagedDevice -ManagedDeviceId $state.DeviceId
+                
+                if ($DeviceFilter -and -not ($device.DeviceName -like "*$DeviceFilter*" -or 
+                    $device.SerialNumber -like "*$DeviceFilter*" -or 
+                    $device.UserPrincipalName -like "*$DeviceFilter*")) {
+                    continue
+                }
+                
+                $securityStatus += [PSCustomObject]@{
+                    DeviceName = $device.DeviceName
+                    DeviceId = $device.Id
+                    UserPrincipalName = $device.UserPrincipalName
+                    PolicyName = "Baseline: $($baseline.DisplayName)"
+                    ComplianceStatus = $state.Status
+                    LastSyncDateTime = $state.LastSyncDateTime
+                    OS = $device.OperatingSystem
+                    OSVersion = $device.OsVersion
+                    JailBroken = $device.JailBroken
+                    ManagedBy = $device.ManagedDeviceOwnerType
+                    Supervised = $device.IsSupervised
+                    Encrypted = $device.IsEncrypted
+                    ErrorCount = $state.ErrorCount
+                    ConflictCount = $state.ConflictCount
+                    UserName = $device.UserDisplayName
+                }
+            }
+        }
+        
+        # Generate summary
+        $summary = @{
+            TotalDevices = ($securityStatus | Select-Object DeviceId -Unique).Count
+            ComplianceBreakdown = $securityStatus | Group-Object ComplianceStatus | ForEach-Object {
+                @{ Status = $_.Name; Count = $_.Count }
+            }
+            OSBreakdown = $securityStatus | Select-Object DeviceId, OS -Unique | Group-Object OS | ForEach-Object {
+                @{ OS = $_.Name; Count = $_.Count }
+            }
+        }
+        
+        Write-M365Log "Security Status Summary:"
+        Write-M365Log "Total Devices: $($summary.TotalDevices)"
+        Write-M365Log "Compliance Status:"
+        $summary.ComplianceBreakdown | ForEach-Object {
+            Write-M365Log "  $($_.Status): $($_.Count)"
+        }
+        
         if ($ExportReport) {
-            $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-            $reportPath = Join-Path (Get-Location) "SecurityStatus-$timestamp.csv"
-            
-            $exportData = $securityStatus | Select-Object DeviceName, SerialNumber, UserPrincipalName,
-                LastSyncDateTime, OSVersion, RiskLevel, RiskScore, RiskFactors, IsEncrypted,
-                IsSupervised, JailBroken, ComplianceState,
-                @{N='AntivirusRealTimeProtection';E={$_.AntivirusStatus.RealTimeProtection}},
-                @{N='AntivirusSignatureStatus';E={$_.AntivirusStatus.SignatureStatus}},
-                @{N='FirewallDomainProfile';E={$_.FirewallStatus.DomainProfile}},
-                @{N='FirewallPrivateProfile';E={$_.FirewallStatus.PrivateProfile}},
-                @{N='FirewallPublicProfile';E={$_.FirewallStatus.PublicProfile}},
-                @{N='CompliantBaselines';E={$_.SecurityBaselines.CompliantBaselines}},
-                @{N='NonCompliantBaselines';E={$_.SecurityBaselines.NonCompliantBaselines}}
-            
-            $exportData | Export-Csv -Path $reportPath -NoTypeInformation
-            Write-M365Log "Security status report exported to: $reportPath"
+            $reportPath = Join-Path -Path (Get-Location) -ChildPath "SecurityStatus_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+            $securityStatus | Export-Csv -Path $reportPath -NoTypeInformation
+            Write-M365Log "Report exported to: $reportPath"
         }
         
-        return $securityStatus
+        return [PSCustomObject]@{
+            Summary = $summary
+            Details = $securityStatus
+        }
     }
     catch {
-        Write-M365Log "Error retrieving device security status: $_" -Level Error
+        Write-M365Log "Error retrieving security status: $_" -Level Error
         throw $_
     }
 }
 
 function Get-MK365UpdateCompliance {
-    <#
-    .SYNOPSIS
-    Retrieves update compliance status for Intune-managed devices.
-
-    .DESCRIPTION
-    The Get-MK365UpdateCompliance function provides detailed information about Windows updates,
-    security patches, and application updates across managed devices. It tracks update deployment
-    status, identifies devices requiring updates, and monitors update installation success rates.
-
-    .PARAMETER DeviceFilter
-    Optional. Filter devices by name, serial number, or user principal name. Supports wildcards.
-
-    .PARAMETER UpdateType
-    Optional. Filter by update type. Valid values are 'All', 'Security', 'Feature', or 'Application'.
-    Default is 'All'.
-
-    .PARAMETER PendingOnly
-    Switch parameter. When specified, only shows devices with pending updates.
-
-    .PARAMETER ExportReport
-    Switch parameter. When specified, exports the update compliance status to a CSV file.
-
-    .EXAMPLE
-    Get-MK365UpdateCompliance
-    Retrieves update compliance status for all devices.
-
-    .EXAMPLE
-    Get-MK365UpdateCompliance -UpdateType Security -PendingOnly -ExportReport
-    Retrieves and exports status of pending security updates.
-
-    .EXAMPLE
-    Get-MK365UpdateCompliance -DeviceFilter "LAP-*" -UpdateType Feature
-    Retrieves feature update status for specific devices.
-
-    .NOTES
-    Requires the following Microsoft Graph permissions:
-    - DeviceManagementManagedDevices.Read.All
-    - DeviceManagementConfiguration.Read.All
-    #>
     [CmdletBinding()]
     param(
         [Parameter()]
         [string]$DeviceFilter,
         
         [Parameter()]
-        [ValidateSet('All', 'Security', 'Feature', 'Application')]
-        [string]$UpdateType = 'All',
-        
-        [Parameter()]
-        [switch]$PendingOnly,
+        [ValidateSet('All', 'Pending', 'Failed', 'Success')]
+        [string]$Status = 'All',
         
         [Parameter()]
         [switch]$ExportReport
@@ -1474,385 +1334,284 @@ function Get-MK365UpdateCompliance {
     
     try {
         Connect-MK365Device
+        Write-M365Log "Retrieving update compliance status..."
         
-        Write-M365Log "Retrieving device update compliance status..."
+        # Get update configurations
+        $updateConfigs = Get-MgDeviceManagementDeviceConfiguration | Where-Object {
+            $_.'@odata.type' -like "*update*" -or $_.'@odata.type' -like "*windowsFeatureUpdate*"
+        }
         
-        # Get devices based on filters
-        $devices = Get-MgDeviceManagementManagedDevice -All
-        if ($DeviceFilter) {
-            $devices = $devices | Where-Object {
-                $_.DeviceName -like "*$DeviceFilter*" -or
-                $_.SerialNumber -like "*$DeviceFilter*" -or
-                $_.UserPrincipalName -like "*$DeviceFilter*"
+        $updateStatus = foreach ($config in $updateConfigs) {
+            $deviceStates = Get-MgDeviceManagementDeviceConfigurationDeviceStatus -DeviceConfigurationId $config.Id
+            
+            if ($Status -ne 'All') {
+                $deviceStates = $deviceStates | Where-Object { $_.Status -eq $Status }
+            }
+            
+            foreach ($state in $deviceStates) {
+                $device = Get-MgDeviceManagementManagedDevice -ManagedDeviceId $state.DeviceId
+                
+                if ($DeviceFilter -and -not ($device.DeviceName -like "*$DeviceFilter*" -or 
+                    $device.SerialNumber -like "*$DeviceFilter*" -or 
+                    $device.UserPrincipalName -like "*$DeviceFilter*")) {
+                    continue
+                }
+                
+                [PSCustomObject]@{
+                    DeviceName = $device.DeviceName
+                    DeviceId = $device.Id
+                    UserPrincipalName = $device.UserPrincipalName
+                    ConfigurationName = $config.DisplayName
+                    Status = $state.Status
+                    LastSyncDateTime = $state.LastReportedDateTime
+                    OS = $device.OperatingSystem
+                    OSVersion = $device.OsVersion
+                    UserName = $device.UserDisplayName
+                    ErrorCode = $state.ErrorCode
+                    ErrorDescription = if ($state.ErrorCode) {
+                        Get-MK365ErrorDescription -ErrorCode $state.ErrorCode -ErrorType 'Update'
+                    } else { $null }
+                }
             }
         }
         
-        # Process each device's update status
-        $updateStatus = foreach ($device in $devices) {
-            # Get Windows update status
-            $windowsUpdates = Get-MgDeviceManagementManagedDeviceWindowsUpdateState -ManagedDeviceId $device.Id
-            
-            # Get update categories
-            $securityUpdates = $windowsUpdates.UpdateCategories | Where-Object { $_.Name -like "*Security*" }
-            $featureUpdates = $windowsUpdates.UpdateCategories | Where-Object { $_.Name -like "*Feature*" }
-            
-            # Calculate update statistics
-            $pendingSecurityUpdates = ($securityUpdates | Where-Object { $_.ComplianceStatus -ne 'Compliant' }).Count
-            $pendingFeatureUpdates = ($featureUpdates | Where-Object { $_.ComplianceStatus -ne 'Compliant' }).Count
-            
-            # Get application update status
-            $appUpdates = Get-MgDeviceManagementManagedDeviceWindowsProtectionState -ManagedDeviceId $device.Id
-            $pendingAppUpdates = if ($appUpdates.AvSignatureVersion -lt $appUpdates.AvSignatureVersionLastUpdate) { 1 } else { 0 }
-            
-            # Create update status object
-            $deviceUpdateStatus = [PSCustomObject]@{
-                DeviceName = $device.DeviceName
-                SerialNumber = $device.SerialNumber
-                UserPrincipalName = $device.UserPrincipalName
-                LastSyncDateTime = $device.LastSyncDateTime
-                OSVersion = $device.OSVersion
-                WindowsUpdateStatus = @{
-                    LastScanTime = $windowsUpdates.LastScanTime
-                    LastUpdateTime = $windowsUpdates.LastUpdateTime
-                    PendingSecurityUpdates = $pendingSecurityUpdates
-                    PendingFeatureUpdates = $pendingFeatureUpdates
-                    LastSuccessfulUpdateTime = $windowsUpdates.LastSuccessfulUpdateTime
-                    LastUpdateResult = $windowsUpdates.LastUpdateResult
-                }
-                ApplicationUpdateStatus = @{
-                    AvSignatureVersion = $appUpdates.AvSignatureVersion
-                    AvSignatureLastUpdate = $appUpdates.AvSignatureVersionLastUpdate
-                    PendingUpdates = $pendingAppUpdates
-                }
-                TotalPendingUpdates = $pendingSecurityUpdates + $pendingFeatureUpdates + $pendingAppUpdates
-                UpdateCompliance = if (($pendingSecurityUpdates + $pendingFeatureUpdates + $pendingAppUpdates) -eq 0) { 'Compliant' } else { 'NonCompliant' }
+        # Generate summary
+        $summary = @{
+            TotalDevices = ($updateStatus | Select-Object DeviceId -Unique).Count
+            StatusBreakdown = $updateStatus | Group-Object Status | ForEach-Object {
+                @{ Status = $_.Name; Count = $_.Count }
             }
-            
-            # Filter based on update type
-            $includeDevice = switch ($UpdateType) {
-                'Security' { $pendingSecurityUpdates -gt 0 }
-                'Feature' { $pendingFeatureUpdates -gt 0 }
-                'Application' { $pendingAppUpdates -gt 0 }
-                default { $true }
-            }
-            
-            # Filter for pending updates if specified
-            if ($PendingOnly -and $deviceUpdateStatus.TotalPendingUpdates -eq 0) {
-                $includeDevice = $false
-            }
-            
-            if ($includeDevice) {
-                $deviceUpdateStatus
+            ConfigBreakdown = $updateStatus | Group-Object ConfigurationName | ForEach-Object {
+                @{ Config = $_.Name; Count = $_.Count }
             }
         }
         
-        # Export report if requested
+        Write-M365Log "Update Compliance Summary:"
+        Write-M365Log "Total Devices: $($summary.TotalDevices)"
+        Write-M365Log "Status Breakdown:"
+        $summary.StatusBreakdown | ForEach-Object {
+            Write-M365Log "  $($_.Status): $($_.Count)"
+        }
+        
         if ($ExportReport) {
-            $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-            $reportPath = Join-Path (Get-Location) "UpdateStatus-$timestamp.csv"
-            
-            $exportData = $updateStatus | Select-Object DeviceName, SerialNumber, UserPrincipalName,
-                LastSyncDateTime, OSVersion, TotalPendingUpdates, UpdateCompliance,
-                @{N='PendingSecurityUpdates';E={$_.WindowsUpdateStatus.PendingSecurityUpdates}},
-                @{N='PendingFeatureUpdates';E={$_.WindowsUpdateStatus.PendingFeatureUpdates}},
-                @{N='LastUpdateScan';E={$_.WindowsUpdateStatus.LastScanTime}},
-                @{N='LastSuccessfulUpdate';E={$_.WindowsUpdateStatus.LastSuccessfulUpdateTime}},
-                @{N='LastUpdateResult';E={$_.WindowsUpdateStatus.LastUpdateResult}},
-                @{N='AvSignatureVersion';E={$_.ApplicationUpdateStatus.AvSignatureVersion}},
-                @{N='AvLastUpdate';E={$_.ApplicationUpdateStatus.AvSignatureLastUpdate}}
-            
-            $exportData | Export-Csv -Path $reportPath -NoTypeInformation
-            Write-M365Log "Update compliance report exported to: $reportPath"
+            $reportPath = Join-Path -Path (Get-Location) -ChildPath "UpdateCompliance_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+            $updateStatus | Export-Csv -Path $reportPath -NoTypeInformation
+            Write-M365Log "Report exported to: $reportPath"
         }
         
-        return $updateStatus
+        return [PSCustomObject]@{
+            Summary = $summary
+            Details = $updateStatus
+        }
     }
     catch {
-        Write-M365Log "Error retrieving device update compliance status: $_" -Level Error
+        Write-M365Log "Error retrieving update compliance: $_" -Level Error
         throw $_
     }
 }
 
 function Get-MK365SystemStatus {
-    <#
-    .SYNOPSIS
-    Retrieves the current status of Microsoft 365 services and components.
-
-    .DESCRIPTION
-    The Get-MK365SystemStatus function provides comprehensive status information about
-    Microsoft 365 services, including service health, incidents, advisories, and
-    planned maintenance. It covers Intune, Azure AD, and related Microsoft 365 services.
-
-    .PARAMETER ServiceFilter
-    Optional. Filter specific services to monitor. Valid values are 'All', 'Intune',
-    'AzureAD', 'Exchange', 'SharePoint', 'Teams', or specific service names.
-    Default is 'All'.
-
-    .PARAMETER IncludeAdvisories
-    Switch parameter. When specified, includes advisory messages that might affect services.
-
-    .PARAMETER LastDays
-    Optional. Number of days of history to include. Default is 7 days.
-
-    .PARAMETER ExportReport
-    Switch parameter. When specified, exports the status report to HTML and/or CSV.
-
-    .PARAMETER ReportFormat
-    Optional. Specifies the report format. Valid values are 'CSV', 'HTML', or 'Both'.
-    Default is 'HTML'.
-
-    .PARAMETER OutputPath
-    Optional. Specifies the output directory for the report files.
-    Default is the current directory.
-
-    .EXAMPLE
-    Get-MK365SystemStatus
-    Returns current status of all Microsoft 365 services.
-
-    .EXAMPLE
-    Get-MK365SystemStatus -ServiceFilter Intune -LastDays 30 -ExportReport
-    Exports a report of Intune service status for the last 30 days.
-
-    .EXAMPLE
-    Get-MK365SystemStatus -IncludeAdvisories -ReportFormat Both
-    Retrieves status including advisories and exports in both HTML and CSV formats.
-
-    .NOTES
-    Requires the following Microsoft Graph permissions:
-    - ServiceHealth.Read.All
-    - ServiceMessage.Read.All
-    #>
     [CmdletBinding()]
     param(
         [Parameter()]
-        [string]$ServiceFilter = 'All',
+        [ValidateSet('All', 'ServiceIssue', 'Advisory', 'Incident', 'Maintenance')]
+        [string]$IssueType = 'All',
         
         [Parameter()]
-        [switch]$IncludeAdvisories,
-        
-        [Parameter()]
-        [int]$LastDays = 7,
-        
-        [Parameter()]
-        [switch]$ExportReport,
-        
-        [Parameter()]
-        [ValidateSet('CSV', 'HTML', 'Both')]
-        [string]$ReportFormat = 'HTML',
-        
-        [Parameter()]
-        [string]$OutputPath = (Get-Location).Path
+        [switch]$ExportReport
     )
     
     try {
         Connect-MK365Device
+        Write-M365Log "Retrieving system status..."
         
-        Write-M365Log "Retrieving Microsoft 365 service status..."
-        
-        # Get service health information
-        $startDate = (Get-Date).AddDays(-$LastDays)
-        $serviceHealth = Get-MgServiceAnnouncementHealthOverview
-        
-        # Get active incidents
-        $activeIncidents = Get-MgServiceAnnouncementIssue -Filter "Status eq 'active'"
-        
-        # Get advisories if requested
-        $advisories = if ($IncludeAdvisories) {
-            Get-MgServiceAnnouncementMessage -Filter "MessageType eq 'advisory'"
+        # Get service health issues
+        $healthIssues = Get-MgServiceHealth
+        if ($IssueType -ne 'All') {
+            $healthIssues = $healthIssues | Where-Object { $_.Classification -eq $IssueType }
         }
         
-        # Filter services if specified
-        $filteredHealth = if ($ServiceFilter -ne 'All') {
-            $serviceHealth | Where-Object {
-                $_.Service -like "*$ServiceFilter*"
+        $systemStatus = foreach ($issue in $healthIssues) {
+            [PSCustomObject]@{
+                Id = $issue.Id
+                Title = $issue.Title
+                Classification = $issue.Classification
+                Status = $issue.Status
+                Service = $issue.Service
+                FeatureGroup = $issue.FeatureGroup
+                StartDateTime = $issue.StartDateTime
+                LastModifiedDateTime = $issue.LastModifiedDateTime
+                Posts = $issue.Posts | ForEach-Object {
+                    @{
+                        CreatedDateTime = $_.CreatedDateTime
+                        Description = $_.Description
+                        PostType = $_.PostType
+                    }
+                }
+                ImpactDescription = $issue.ImpactDescription
+                IsResolved = $issue.Status -eq 'Resolved'
             }
-        } else {
-            $serviceHealth
         }
         
-        # Create status object
-        $systemStatus = @{
-            LastUpdated = Get-Date
-            ServicesOverview = $filteredHealth | Select-Object @{
-                Name = 'Service'; Expression = { $_.Service }
-            }, @{
-                Name = 'Status'; Expression = { $_.Status }
-            }, @{
-                Name = 'FeatureStatus'; Expression = {
-                    $_.FeatureStatus | ConvertTo-Json
+        # Generate summary
+        $summary = @{
+            TotalIssues = $healthIssues.Count
+            ActiveIssues = ($systemStatus | Where-Object { -not $_.IsResolved }).Count
+            ResolvedIssues = ($systemStatus | Where-Object { $_.IsResolved }).Count
+            IssuesByType = $systemStatus | Group-Object Classification | ForEach-Object {
+                @{
+                    Type = $_.Name
+                    Count = $_.Count
                 }
             }
-            ActiveIncidents = $activeIncidents | Select-Object @{
-                Name = 'Service'; Expression = { $_.Service }
-            }, @{
-                Name = 'Title'; Expression = { $_.Title }
-            }, @{
-                Name = 'Classification'; Expression = { $_.Classification }
-            }, @{
-                Name = 'StartTime'; Expression = { $_.StartDateTime }
-            }, @{
-                Name = 'LastUpdate'; Expression = { $_.LastModifiedDateTime }
-            }, @{
-                Name = 'Status'; Expression = { $_.Status }
-            }, @{
-                Name = 'Severity'; Expression = { $_.Severity }
-            }
-            Advisories = if ($IncludeAdvisories) {
-                $advisories | Select-Object @{
-                    Name = 'Title'; Expression = { $_.Title }
-                }, @{
-                    Name = 'Category'; Expression = { $_.Category }
-                }, @{
-                    Name = 'Severity'; Expression = { $_.Severity }
-                }, @{
-                    Name = 'ActionRequired'; Expression = { $_.ActionRequired }
-                }, @{
-                    Name = 'StartTime'; Expression = { $_.StartDateTime }
+            IssuesByService = $systemStatus | Group-Object Service | ForEach-Object {
+                @{
+                    Service = $_.Name
+                    Count = $_.Count
                 }
             }
         }
         
-        # Export report if requested
+        Write-M365Log "System Status Summary:"
+        Write-M365Log "Total Issues: $($summary.TotalIssues)"
+        Write-M365Log "Active Issues: $($summary.ActiveIssues)"
+        Write-M365Log "Resolved Issues: $($summary.ResolvedIssues)"
+        Write-M365Log "Issues by Type:"
+        $summary.IssuesByType | ForEach-Object {
+            Write-M365Log "  $($_.Type): $($_.Count)"
+        }
+        
         if ($ExportReport) {
-            $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-            
-            # Export CSV if requested
-            if ($ReportFormat -in 'CSV', 'Both') {
-                $csvPath = Join-Path $OutputPath "SystemStatus-$timestamp.csv"
-                
-                # Export services overview
-                $systemStatus.ServicesOverview | Export-Csv -Path $csvPath -NoTypeInformation
-                Write-M365Log "Services overview exported to: $csvPath"
-                
-                # Export incidents
-                $incidentsPath = Join-Path $OutputPath "SystemIncidents-$timestamp.csv"
-                $systemStatus.ActiveIncidents | Export-Csv -Path $incidentsPath -NoTypeInformation
-                Write-M365Log "Active incidents exported to: $incidentsPath"
-                
-                # Export advisories if included
-                if ($IncludeAdvisories) {
-                    $advisoriesPath = Join-Path $OutputPath "SystemAdvisories-$timestamp.csv"
-                    $systemStatus.Advisories | Export-Csv -Path $advisoriesPath -NoTypeInformation
-                    Write-M365Log "Advisories exported to: $advisoriesPath"
-                }
-            }
-            
-            # Export HTML if requested
-            if ($ReportFormat -in 'HTML', 'Both') {
-                $htmlPath = Join-Path $OutputPath "SystemStatus-$timestamp.html"
-                
-                # Create HTML report
-                $htmlReport = @"
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Microsoft 365 System Status Report</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1, h2 { color: #2c3e50; }
-        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f5f6fa; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .summary { margin-bottom: 30px; }
-        .status-healthy { color: green; }
-        .status-warning { color: orange; }
-        .status-critical { color: red; }
-        .status-unknown { color: gray; }
-    </style>
-</head>
-<body>
-    <h1>Microsoft 365 System Status Report</h1>
-    <p>Generated: $($systemStatus.LastUpdated)</p>
-
-    <div class="summary">
-        <h2>Services Overview</h2>
-        <table>
-            <tr>
-                <th>Service</th>
-                <th>Status</th>
-                <th>Feature Status</th>
-            </tr>
-            $(($systemStatus.ServicesOverview | ForEach-Object {
-                $statusClass = switch ($_.Status) {
-                    'healthy' { 'status-healthy' }
-                    'warning' { 'status-warning' }
-                    'critical' { 'status-critical' }
-                    default { 'status-unknown' }
-                }
-                "<tr>
-                    <td>$($_.Service)</td>
-                    <td class='$statusClass'>$($_.Status)</td>
-                    <td>$($_.FeatureStatus)</td>
-                </tr>"
-            }) -join "`n")
-        </table>
-    </div>
-
-    <div class="summary">
-        <h2>Active Incidents</h2>
-        <table>
-            <tr>
-                <th>Service</th>
-                <th>Title</th>
-                <th>Classification</th>
-                <th>Start Time</th>
-                <th>Last Update</th>
-                <th>Status</th>
-                <th>Severity</th>
-            </tr>
-            $(($systemStatus.ActiveIncidents | ForEach-Object {
-                "<tr>
-                    <td>$($_.Service)</td>
-                    <td>$($_.Title)</td>
-                    <td>$($_.Classification)</td>
-                    <td>$($_.StartTime)</td>
-                    <td>$($_.LastUpdate)</td>
-                    <td>$($_.Status)</td>
-                    <td>$($_.Severity)</td>
-                </tr>"
-            }) -join "`n")
-        </table>
-    </div>
-
-    $(if ($IncludeAdvisories) {
-    @"
-    <div class="summary">
-        <h2>Advisories</h2>
-        <table>
-            <tr>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Severity</th>
-                <th>Action Required</th>
-                <th>Start Time</th>
-            </tr>
-            $(($systemStatus.Advisories | ForEach-Object {
-                "<tr>
-                    <td>$($_.Title)</td>
-                    <td>$($_.Category)</td>
-                    <td>$($_.Severity)</td>
-                    <td>$($_.ActionRequired)</td>
-                    <td>$($_.StartTime)</td>
-                </tr>"
-            }) -join "`n")
-        </table>
-    </div>
-"@
-    })
-</body>
-</html>
-"@
-                $htmlReport | Out-File -FilePath $htmlPath -Encoding UTF8
-                Write-M365Log "HTML report exported to: $htmlPath"
-            }
+            $reportPath = Join-Path -Path (Get-Location) -ChildPath "SystemStatus_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+            $systemStatus | Export-Csv -Path $reportPath -NoTypeInformation
+            Write-M365Log "Report exported to: $reportPath"
         }
         
-        return $systemStatus
+        return [PSCustomObject]@{
+            Summary = $summary
+            Details = $systemStatus
+        }
     }
     catch {
-        Write-M365Log "Error retrieving Microsoft 365 system status: $_" -Level Error
+        Write-M365Log "Error retrieving system status: $_" -Level Error
         throw $_
+    }
+}
+
+function Connect-MK365Device {
+    [CmdletBinding()]
+    param()
+    
+    try {
+        # Check if already connected
+        try {
+            $null = Get-MgContext
+            Write-M365Log "Already connected to Microsoft Graph"
+            return
+        }
+        catch {
+            Write-M365Log "Not connected to Microsoft Graph, initiating connection..."
+        }
+        
+        # Required scopes for device management
+        $requiredScopes = @(
+            'DeviceManagementApps.Read.All',
+            'DeviceManagementConfiguration.Read.All',
+            'DeviceManagementManagedDevices.Read.All',
+            'DeviceManagementServiceConfig.Read.All',
+            'Directory.Read.All'
+        )
+        
+        # Connect to Microsoft Graph
+        Connect-MgGraph -Scopes $requiredScopes
+        
+        # Verify connection
+        $context = Get-MgContext
+        if (-not $context) {
+            throw "Failed to connect to Microsoft Graph"
+        }
+        
+        Write-M365Log "Successfully connected to Microsoft Graph with scopes: $($context.Scopes -join ', ')"
+    }
+    catch {
+        Write-M365Log "Error connecting to Microsoft Graph: $_" -Level Error
+        throw $_
+    }
+}
+
+function Write-M365Log {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message,
+        
+        [Parameter()]
+        [ValidateSet('Information', 'Warning', 'Error')]
+        [string]$Level = 'Information'
+    )
+    
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $logMessage = "[$timestamp] [$Level] $Message"
+    
+    switch ($Level) {
+        'Warning' { Write-Warning $logMessage }
+        'Error' { Write-Error $logMessage }
+        default { Write-Verbose $logMessage -Verbose }
+    }
+}
+
+function Get-MK365ErrorDescription {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ErrorCode,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('AppInstall', 'Update', 'Compliance', 'Configuration')]
+        [string]$ErrorType
+    )
+    
+    try {
+        # Get error catalog from Microsoft Graph
+        $errorInfo = Get-MgDeviceManagementTroubleshootingEvent -Filter "code eq '$ErrorCode'"
+        
+        if ($errorInfo) {
+            return $errorInfo.TroubleshootingDescription
+        }
+        
+        # Fallback to common error codes if not found in Graph
+        $commonErrors = @{
+            'AppInstall' = @{
+                '0x87D13B0F' = 'Insufficient disk space'
+                '0x87D1041C' = 'App installation failed'
+                '0x87D13B10' = 'Device not compliant'
+            }
+            'Update' = @{
+                '0x80240022' = 'Update download failed'
+                '0x80240020' = 'Update installation failed'
+                '0x80240034' = 'Update not applicable'
+            }
+            'Compliance' = @{
+                '0x87D1B258' = 'Device not compliant with security policies'
+                '0x87D1B259' = 'Required application not installed'
+                '0x87D1B260' = 'Security settings not configured'
+            }
+            'Configuration' = @{
+                '0x87D13B01' = 'Configuration failed to apply'
+                '0x87D13B02' = 'Invalid configuration settings'
+                '0x87D13B03' = 'Device not supported'
+            }
+        }
+        
+        if ($commonErrors[$ErrorType].ContainsKey($ErrorCode)) {
+            return $commonErrors[$ErrorType][$ErrorCode]
+        }
+        
+        return "Unknown error code: $ErrorCode"
+    }
+    catch {
+        Write-M365Log "Error retrieving error description: $_" -Level Error
+        return "Error retrieving description for code: $ErrorCode"
     }
 }
 

@@ -1,0 +1,4 @@
+UserPrincipalName,DisplayName,Department,JobTitle,MobilePhone,AccountEnabled
+john.doe@contoso.com,John A. Doe,IT Infrastructure,Senior Systems Engineer,+1234567890,TRUE
+jane.smith@contoso.com,Jane M. Smith,Human Resources,Senior HR Manager,+1234567891,TRUE
+mike.johnson@contoso.com,Michael Johnson,Finance,Senior Accountant,+1234567892,TRUE
