@@ -36,3 +36,16 @@ venv/
 scratchpad.md
 tools/
 internal/
+.devcontainer/
+.windsurfrules
+.vscode.example/
+requirements.txt
+
+# Module specific
+Modules/MK365DeviceManager/Templates/
+Modules/MK365LicenseManager/
+
+# Development files
+*.dev.*
+*.test.*
+*.local.*
