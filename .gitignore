@@ -1,0 +1,38 @@
+# PowerShell
+*.ps1.test
+*.psm1.test
+*.psd1.test
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Local configuration
+config/
+*.config
+*.conf
+
+# Logs
+logs/
+*.log
+
+# Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment
+.env
+.venv
+venv/
+
+# Temp files
+*.tmp
+*.temp
+*.bak
+*~
+
+# Internal development files
+scratchpad.md
+tools/
+internal/
