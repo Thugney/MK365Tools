@@ -26,6 +26,12 @@ Import-Module .\MK365UserManager.psd1
 - Manage user properties and access settings
 - Reset passwords and enable MFA
 - Bulk user operations with CSV templates
+- User access control and permissions
+- User security status monitoring
+- Automated user provisioning
+- User license management
+- Custom attribute management
+- User activity tracking
 
 ### Group Management
 - Add and remove users from groups
@@ -87,6 +93,92 @@ For detailed information about templates and scripts, see `Templates/README.md`.
   ```powershell
   Remove-MK365User -UserPrincipalName "user@domain.com"
   ```
+
+### User Management Functions
+
+#### User Creation and Setup
+```powershell
+# Create a new user
+New-MK365User -DisplayName "John Doe" `
+              -UserPrincipalName "john.doe@contoso.com" `
+              -Password "SecurePass123!" `
+              -Department "IT" `
+              -JobTitle "Systems Engineer" `
+              -ForceChangePasswordNextSignIn
+
+# Update user properties
+Set-MK365UserProperties -UserPrincipalName "john.doe@contoso.com" `
+                       -DisplayName "John A. Doe" `
+                       -Department "IT Infrastructure" `
+                       -JobTitle "Senior Systems Engineer"
+
+# Remove a user
+Remove-MK365User -UserPrincipalName "john.doe@contoso.com"
+```
+
+#### User Access Management
+```powershell
+# Get user access information
+Get-MK365UserAccess -UserPrincipalName "john.doe@contoso.com"
+
+# Set user access
+Set-MK365UserAccess -UserPrincipalName "john.doe@contoso.com" `
+                    -BlockSignIn $false `
+                    -AddDirectoryRoles @("Helpdesk Administrator")
+
+# Get user security status
+Get-MK365UserSecurityStatus -UserPrincipalName "john.doe@contoso.com"
+```
+
+#### Password and Authentication
+```powershell
+# Reset user password
+Reset-MK365UserPassword -UserPrincipalName "john.doe@contoso.com" `
+                       -NewPassword "NewSecurePass123!" `
+                       -ForceChangePasswordNextSignIn
+
+# Enable MFA
+Enable-MK365MFA -UserPrincipalName "john.doe@contoso.com"
+```
+
+#### Bulk Operations
+```powershell
+# Create multiple users from CSV
+$users = Import-Csv ".\Templates\NewUsers.csv"
+foreach ($user in $users) {
+    New-MK365User @user
+}
+
+# Update multiple users
+$updates = Import-Csv ".\Templates\BulkUserUpdate.csv"
+foreach ($update in $updates) {
+    Set-MK365UserProperties @update
+}
+```
+
+### User Management Templates
+The module includes ready-to-use templates for user management:
+
+#### NewUsers.csv
+```csv
+DisplayName,UserPrincipalName,Password,Department,JobTitle,MobilePhone,ForceChangePasswordNextSignIn
+John Doe,john.doe@contoso.com,SecurePass123!,IT,Systems Engineer,+1234567890,TRUE
+```
+
+#### BulkUserUpdate.csv
+```csv
+UserPrincipalName,DisplayName,Department,JobTitle,MobilePhone,AccountEnabled
+john.doe@contoso.com,John A. Doe,IT Infrastructure,Senior Systems Engineer,+1234567890,TRUE
+```
+
+### User Management Best Practices
+1. Always use secure passwords and enable MFA
+2. Review user access regularly
+3. Document user management procedures
+4. Use bulk operations for efficiency
+5. Maintain user lifecycle management
+6. Regular security audits
+7. Monitor user activity
 
 ### Group Management
 - `Add-MK365UserToGroup`: Adds a user to a group
