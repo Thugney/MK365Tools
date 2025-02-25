@@ -165,7 +165,7 @@ function New-MK365User {
         if ($JobTitle) { $userParams['JobTitle'] = $JobTitle }
         if ($MobilePhone) { $userParams['MobilePhone'] = $MobilePhone }
 
-        # Create the user
+        # Create the user using Microsoft Graph cmdlet
         $newUser = New-MgUser @userParams
         Write-Verbose "Created new user: $($newUser.UserPrincipalName)"
         return $newUser
@@ -208,18 +208,16 @@ function Set-MK365UserProperties {
 
         # Prepare update parameters
         $updateParams = @{}
-        if ($DisplayName) { $updateParams['DisplayName'] = $DisplayName }
-        if ($Department) { $updateParams['Department'] = $Department }
-        if ($JobTitle) { $updateParams['JobTitle'] = $JobTitle }
-        if ($MobilePhone) { $updateParams['MobilePhone'] = $MobilePhone }
-        if ($null -ne $AccountEnabled) { $updateParams['AccountEnabled'] = $AccountEnabled }
+        if ($PSBoundParameters.ContainsKey('DisplayName')) { $updateParams['DisplayName'] = $DisplayName }
+        if ($PSBoundParameters.ContainsKey('Department')) { $updateParams['Department'] = $Department }
+        if ($PSBoundParameters.ContainsKey('JobTitle')) { $updateParams['JobTitle'] = $JobTitle }
+        if ($PSBoundParameters.ContainsKey('MobilePhone')) { $updateParams['MobilePhone'] = $MobilePhone }
+        if ($PSBoundParameters.ContainsKey('AccountEnabled')) { $updateParams['AccountEnabled'] = $AccountEnabled }
 
-        # Update the user
-        Update-MgUser -UserId $UserPrincipalName -BodyParameter $updateParams
+        # Update user using Microsoft Graph cmdlet
+        $updatedUser = Update-MgUser -UserId $UserPrincipalName -BodyParameter $updateParams
         Write-Verbose "Updated user properties for: $UserPrincipalName"
-        
-        # Return the updated user object
-        return Get-MgUser -UserId $UserPrincipalName
+        return $updatedUser
     }
     catch {
         Write-Error "Failed to update user properties: $_"
@@ -229,7 +227,7 @@ function Set-MK365UserProperties {
 
 # Function to remove a user
 function Remove-MK365User {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
         [string]$UserPrincipalName
@@ -242,13 +240,37 @@ function Remove-MK365User {
             throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
         }
 
-        if ($PSCmdlet.ShouldProcess($UserPrincipalName, "Remove user")) {
-            Remove-MgUser -UserId $UserPrincipalName
-            Write-Verbose "Removed user: $UserPrincipalName"
-        }
+        # Remove user using Microsoft Graph cmdlet
+        Remove-MgUser -UserId $UserPrincipalName
+        Write-Verbose "Removed user: $UserPrincipalName"
     }
     catch {
         Write-Error "Failed to remove user: $_"
+        throw
+    }
+}
+
+# Function to get user groups
+function Get-MK365UserGroups {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$UserPrincipalName
+    )
+    
+    try {
+        # Verify Microsoft Graph connection
+        $context = Get-MgContext
+        if (-not $context) {
+            throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
+        }
+
+        # Get user's group memberships using Microsoft Graph cmdlet
+        $groups = Get-MgUserMemberOf -UserId $UserPrincipalName
+        return $groups | Where-Object { $_.AdditionalProperties.'@odata.type' -eq '#microsoft.graph.group' }
+    }
+    catch {
+        Write-Error "Failed to get user groups: $_"
         throw
     }
 }
@@ -271,11 +293,8 @@ function Add-MK365UserToGroup {
             throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
         }
 
-        # Get user ID
-        $user = Get-MgUser -UserId $UserPrincipalName
-        
-        # Add user to group
-        New-MgGroupMember -GroupId $GroupId -DirectoryObjectId $user.Id
+        # Add user to group using Microsoft Graph cmdlet
+        New-MgGroupMember -GroupId $GroupId -DirectoryObjectId $UserPrincipalName
         Write-Verbose "Added user $UserPrincipalName to group $GroupId"
     }
     catch {
@@ -286,7 +305,7 @@ function Add-MK365UserToGroup {
 
 # Function to remove user from group
 function Remove-MK365UserFromGroup {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
         [string]$UserPrincipalName,
@@ -302,41 +321,12 @@ function Remove-MK365UserFromGroup {
             throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
         }
 
-        # Get user ID
-        $user = Get-MgUser -UserId $UserPrincipalName
-
-        if ($PSCmdlet.ShouldProcess("$UserPrincipalName from group $GroupId", "Remove")) {
-            Remove-MgGroupMemberByRef -GroupId $GroupId -DirectoryObjectId $user.Id
-            Write-Verbose "Removed user $UserPrincipalName from group $GroupId"
-        }
+        # Remove user from group using Microsoft Graph cmdlet
+        Remove-MgGroupMemberByRef -GroupId $GroupId -DirectoryObjectId $UserPrincipalName
+        Write-Verbose "Removed user $UserPrincipalName from group $GroupId"
     }
     catch {
         Write-Error "Failed to remove user from group: $_"
-        throw
-    }
-}
-
-# Function to get user groups
-function Get-MK365UserGroups {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$UserPrincipalName
-    )
-    
-    try {
-        # Verify Microsoft Graph connection
-        $context = Get-MgContext
-        if (-not $context) {
-            throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
-        }
-
-        # Get user's groups
-        $groups = Get-MgUserMemberOf -UserId $UserPrincipalName
-        return $groups | Where-Object { $_.'@odata.type' -eq '#microsoft.graph.group' }
-    }
-    catch {
-        Write-Error "Failed to get user groups: $_"
         throw
     }
 }
@@ -391,15 +381,12 @@ function Reset-MK365UserPassword {
             throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
         }
 
-        # Reset password
-        Update-MgUser -UserId $UserPrincipalName -PasswordProfile @{
-            Password = $NewPassword
-            ForceChangePasswordNextSignIn = $ForceChangePasswordNextSignIn.IsPresent
-        }
-        Write-Verbose "Password reset successful for user: $UserPrincipalName"
+        # Reset password using Microsoft Graph cmdlet
+        Update-MgUserPassword -UserId $UserPrincipalName -NewPassword $NewPassword -ForceChangePasswordNextSignIn:$ForceChangePasswordNextSignIn
+        Write-Verbose "Reset password for user: $UserPrincipalName"
     }
     catch {
-        Write-Error "Failed to reset user password: $_"
+        Write-Error "Failed to reset password: $_"
         throw
     }
 }
@@ -460,7 +447,7 @@ function Get-MK365UserAccess {
 
         # Get user's roles and app permissions
         $user = Get-MgUser -UserId $UserPrincipalName
-        $directoryRoles = Get-MgUserMemberOf -UserId $user.Id | Where-Object { $_.'@odata.type' -eq '#microsoft.graph.directoryRole' }
+        $directoryRoles = Get-MgUserMemberOf -UserId $user.Id | Where-Object { $_.AdditionalProperties.'@odata.type' -eq '#microsoft.graph.directoryRole' }
         $appRoleAssignments = Get-MgUserAppRoleAssignment -UserId $user.Id
 
         return [PSCustomObject]@{
