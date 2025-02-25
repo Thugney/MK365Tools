@@ -26,7 +26,7 @@ function Start-MK365ResetWorkflow {
         try {
             $context = Get-MgContext
             if (-not $context) {
-                throw "Not connected to Microsoft Graph. Please connect using Connect-MK365Device first."
+                throw "Not connected to Microsoft Graph. Please connect using Connect-MgGraph first."
             }
         }
         catch {
@@ -50,7 +50,6 @@ function Start-MK365ResetWorkflow {
 
             # Filter eligible devices
             $eligibleDevices = $devices | Where-Object {
-                # Add your eligibility criteria here
                 $_.ComplianceState -eq 'Compliant' -and
                 $_.ManagementState -eq 'Managed'
             }
@@ -60,38 +59,54 @@ function Start-MK365ResetWorkflow {
             foreach ($device in $eligibleDevices) {
                 if ($PSCmdlet.ShouldProcess($device.SerialNumber, "Reset device")) {
                     try {
-                        # 1. Initiate device reset
+                        # 1. Initiate device reset using latest Graph cmdlets
                         Write-Verbose "Initiating reset for device: $($device.SerialNumber)"
-                        $resetParams = @{
-                            managedDeviceId = $device.IntuneDeviceId
+                        
+                        # New Graph cmdlet for device wipe
+                        $params = @{
+                            keepEnrollmentData = $false
                             keepUserData = $false
+                            useProtectedWipe = $true
                         }
                         
-                        Invoke-MgGraphRequest -Method POST `
-                            -Uri "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices/$($device.IntuneDeviceId)/wipe" `
-                            -Body ($resetParams | ConvertTo-Json)
+                        Invoke-MgWipeDeviceManagementManagedDevice -ManagedDeviceId $device.IntuneDeviceId -BodyParameter $params
 
                         # 2. Track reset status
                         $script:resetResults.Pending += $device
 
-                        # 3. Remove from AutoPilot (after reset confirmation)
+                        # 3. Remove from AutoPilot using latest cmdlets
                         Write-Verbose "Removing device from AutoPilot: $($device.SerialNumber)"
                         $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity `
                             -Filter "serialNumber eq '$($device.SerialNumber)'"
                         
                         if ($autopilotDevice) {
-                            Remove-MgDeviceManagementWindowsAutopilotDeviceIdentity -WindowsAutopilotDeviceIdentityId $autopilotDevice.Id
+                            Remove-MgDeviceManagementWindowsAutopilotDeviceIdentity `
+                                -WindowsAutopilotDeviceIdentityId $autopilotDevice.Id
                         }
 
-                        # 4. Remove from Azure AD
+                        # 4. Remove from Azure AD using latest cmdlets
                         Write-Verbose "Removing device from Azure AD: $($device.SerialNumber)"
                         if ($device.AzureADObjectId) {
                             Remove-MgDevice -DeviceId $device.AzureADObjectId
                         }
 
+                        # 5. Update device category
+                        if ($device.IntuneDeviceId) {
+                            $updateParams = @{
+                                deviceCategoryDisplayName = "Reset Pending"
+                            }
+                            Update-MgDeviceManagementManagedDevice `
+                                -ManagedDeviceId $device.IntuneDeviceId `
+                                -BodyParameter $updateParams
+                        }
+
                         # Mark as successful
                         $script:resetResults.Successful += $device
-                        $script:resetResults.Pending = $script:resetResults.Pending | Where-Object { $_.SerialNumber -ne $device.SerialNumber }
+                        $script:resetResults.Pending = $script:resetResults.Pending | 
+                            Where-Object { $_.SerialNumber -ne $device.SerialNumber }
+
+                        # Log success
+                        Write-Verbose "Successfully processed device: $($device.SerialNumber)"
                     }
                     catch {
                         Write-Error "Failed to process device $($device.SerialNumber): $_"
@@ -121,6 +136,33 @@ function Start-MK365ResetWorkflow {
                 $reportData | ConvertTo-Json -Depth 10 | Out-File $reportPath
 
                 Write-Verbose "Reset report saved to: $reportPath"
+
+                # Send notification using Graph API
+                $mailParams = @{
+                    Message = @{
+                        Subject = "Device Reset Report - $timestamp"
+                        Body = @{
+                            ContentType = "HTML"
+                            Content = "Device reset operation completed. See attached report."
+                        }
+                        ToRecipients = @(
+                            @{
+                                EmailAddress = @{
+                                    Address = "it@school.com"
+                                }
+                            }
+                        )
+                        Attachments = @(
+                            @{
+                                "@odata.type" = "#microsoft.graph.fileAttachment"
+                                Name = "ResetReport-$timestamp.json"
+                                ContentBytes = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($reportPath))
+                            }
+                        )
+                    }
+                }
+
+                Send-MgUserMail -UserId $context.Account -BodyParameter $mailParams
             }
 
             # Return results

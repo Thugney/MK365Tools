@@ -26,7 +26,7 @@ function Get-MK365DeviceInventory {
         try {
             $context = Get-MgContext
             if (-not $context) {
-                throw "Not connected to Microsoft Graph. Please connect using Connect-MK365Device first."
+                throw "Not connected to Microsoft Graph. Please connect using Connect-MgGraph first."
             }
         }
         catch {
@@ -41,7 +41,7 @@ function Get-MK365DeviceInventory {
 
     process {
         try {
-            # Get all managed devices
+            # Get all managed devices using latest Graph cmdlets
             Write-Verbose "Retrieving managed devices..."
             $devices = Get-MgDeviceManagementManagedDevice -All
 
@@ -56,35 +56,51 @@ function Get-MK365DeviceInventory {
                 }
             }
 
-            # Enhance device information
-            $enhancedDevices = foreach ($device in $devices) {
-                # Get Azure AD device information
-                $azureDevice = Get-MgDevice -Filter "DeviceId eq '$($device.AzureAdDeviceId)'" -ErrorAction SilentlyContinue
+            # Enhance device information using parallel processing for better performance
+            $enhancedDevices = $devices | ForEach-Object -ThrottleLimit 10 -Parallel {
+                # Get Azure AD device information using new cmdlets
+                $azureDevice = Get-MgDevice -Filter "DeviceId eq '$($_.AzureAdDeviceId)'" -ErrorAction SilentlyContinue
 
-                # Get user information
+                # Get user information using new cmdlets
                 $user = $null
-                if ($device.UserId) {
-                    $user = Get-MgUser -UserId $device.UserId -ErrorAction SilentlyContinue
+                if ($_.UserId) {
+                    $user = Get-MgUser -UserId $_.UserId -ErrorAction SilentlyContinue
                 }
+
+                # Get group memberships for class information
+                $groups = $null
+                if ($user) {
+                    $groups = Get-MgUserMemberOf -UserId $user.Id -ErrorAction SilentlyContinue
+                }
+
+                # Get detailed device configuration
+                $deviceConfig = Get-MgDeviceManagementManagedDeviceConfigurationState -ManagedDeviceId $_.Id -ErrorAction SilentlyContinue
 
                 # Create custom object with enhanced information
                 [PSCustomObject]@{
-                    SerialNumber = $device.SerialNumber
+                    SerialNumber = $_.SerialNumber
                     UserName = $user.DisplayName
                     UserPrincipalName = $user.UserPrincipalName
                     Title = $user.JobTitle
-                    School = $device.ManagedDeviceName.Split('-')[0] # Assuming school code is part of device name
-                    Class = $null # To be populated from group membership
-                    Model = $device.Model
-                    IntuneDeviceId = $device.Id
-                    AzureADDeviceId = $device.AzureAdDeviceId
+                    School = $_.ManagedDeviceName.Split('-')[0]
+                    Class = ($groups | Where-Object { $_.AdditionalProperties.displayName -match '^[0-9]' }).AdditionalProperties.displayName -join ';'
+                    Model = $_.Model
+                    IntuneDeviceId = $_.Id
+                    AzureADDeviceId = $_.AzureAdDeviceId
                     AzureADObjectId = $azureDevice.Id
-                    LastSyncDateTime = $device.LastSyncDateTime
-                    OSVersion = $device.OSVersion
-                    StorageTotal = [math]::Round($device.TotalStorageSpaceInBytes / 1GB, 2)
-                    StorageFree = [math]::Round($device.FreeStorageSpaceInBytes / 1GB, 2)
-                    ComplianceState = $device.ComplianceState
-                    ManagementState = $device.ManagementState
+                    LastSyncDateTime = $_.LastSyncDateTime
+                    OSVersion = $_.OSVersion
+                    StorageTotal = [math]::Round($_.TotalStorageSpaceInBytes / 1GB, 2)
+                    StorageFree = [math]::Round($_.FreeStorageSpaceInBytes / 1GB, 2)
+                    ComplianceState = $_.ComplianceState
+                    ManagementState = $_.ManagementState
+                    ConfigurationStatus = ($deviceConfig | ForEach-Object { "$($_.ConfigurationDisplayName): $($_.State)" }) -join '; '
+                    LastModifiedDateTime = $_.LastModifiedDateTime
+                    EnrollmentDateTime = $_.EnrollmentDateTime
+                    DeviceName = $_.DeviceName
+                    Manufacturer = $_.Manufacturer
+                    JoinType = $_.JoinType
+                    Category = $_.DeviceCategory
                 }
             }
 
