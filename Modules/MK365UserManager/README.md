@@ -68,25 +68,42 @@ For detailed information about templates and scripts, see `Templates/README.md`.
 ## Functions
 
 ### Connection Management
-- `Connect-MK365User`: Establishes connection to Microsoft Graph API
+- `Connect-MK365User`: Connects to Microsoft 365
   ```powershell
-  Connect-MK365User -TenantId "your-tenant-id" -Interactive
+  # Interactive connection
+  Connect-MK365User -Interactive
+  
+  # Certificate-based authentication
+  Connect-MK365User -TenantId "your-tenant-id" -ClientId "your-client-id" -CertificateThumbprint "cert-thumbprint"
   ```
 
 ### User Management
-- `Get-MK365UserOverview`: Retrieves user information
+- `Get-MK365UserOverview`: Gets overview of users
   ```powershell
+  # Get all users
+  Get-MK365UserOverview
+  
+  # Get specific user with detailed info
   Get-MK365UserOverview -UserPrincipalName "user@domain.com" -Detailed
   ```
 
-- `New-MK365User`: Creates a new Microsoft 365 user
+- `New-MK365User`: Creates a new user
   ```powershell
-  New-MK365User -DisplayName "John Doe" -UserPrincipalName "john@domain.com" -Password "SecurePass123!" -Department "IT"
+  New-MK365User -DisplayName "John Doe" `
+                -UserPrincipalName "john.doe@contoso.com" `
+                -Password "SecurePass123!" `
+                -Department "IT" `
+                -JobTitle "Systems Engineer" `
+                -ForceChangePasswordNextSignIn
   ```
 
 - `Set-MK365UserProperties`: Updates user properties
   ```powershell
-  Set-MK365UserProperties -UserPrincipalName "user@domain.com" -DisplayName "New Name" -Department "HR"
+  Set-MK365UserProperties -UserPrincipalName "john.doe@contoso.com" `
+                         -DisplayName "John A. Doe" `
+                         -Department "IT" `
+                         -JobTitle "Senior Engineer" `
+                         -AccountEnabled $true
   ```
 
 - `Remove-MK365User`: Removes a user
@@ -94,138 +111,67 @@ For detailed information about templates and scripts, see `Templates/README.md`.
   Remove-MK365User -UserPrincipalName "user@domain.com"
   ```
 
-### User Management Functions
-
-#### User Creation and Setup
-```powershell
-# Create a new user
-New-MK365User -DisplayName "John Doe" `
-              -UserPrincipalName "john.doe@contoso.com" `
-              -Password "SecurePass123!" `
-              -Department "IT" `
-              -JobTitle "Systems Engineer" `
-              -ForceChangePasswordNextSignIn
-
-# Update user properties
-Set-MK365UserProperties -UserPrincipalName "john.doe@contoso.com" `
-                       -DisplayName "John A. Doe" `
-                       -Department "IT Infrastructure" `
-                       -JobTitle "Senior Systems Engineer"
-
-# Remove a user
-Remove-MK365User -UserPrincipalName "john.doe@contoso.com"
-```
-
-#### User Access Management
-```powershell
-# Get user access information
-Get-MK365UserAccess -UserPrincipalName "john.doe@contoso.com"
-
-# Set user access
-Set-MK365UserAccess -UserPrincipalName "john.doe@contoso.com" `
-                    -BlockSignIn $false `
-                    -AddDirectoryRoles @("Helpdesk Administrator")
-
-# Get user security status
-Get-MK365UserSecurityStatus -UserPrincipalName "john.doe@contoso.com"
-```
-
-#### Password and Authentication
-```powershell
-# Reset user password
-Reset-MK365UserPassword -UserPrincipalName "john.doe@contoso.com" `
-                       -NewPassword "NewSecurePass123!" `
-                       -ForceChangePasswordNextSignIn
-
-# Enable MFA
-Enable-MK365MFA -UserPrincipalName "john.doe@contoso.com"
-```
-
-#### Bulk Operations
-```powershell
-# Create multiple users from CSV
-$users = Import-Csv ".\Templates\NewUsers.csv"
-foreach ($user in $users) {
-    New-MK365User @user
-}
-
-# Update multiple users
-$updates = Import-Csv ".\Templates\BulkUserUpdate.csv"
-foreach ($update in $updates) {
-    Set-MK365UserProperties @update
-}
-```
-
-### User Management Templates
-The module includes ready-to-use templates for user management:
-
-#### NewUsers.csv
-```csv
-DisplayName,UserPrincipalName,Password,Department,JobTitle,MobilePhone,ForceChangePasswordNextSignIn
-John Doe,john.doe@contoso.com,SecurePass123!,IT,Systems Engineer,+1234567890,TRUE
-```
-
-#### BulkUserUpdate.csv
-```csv
-UserPrincipalName,DisplayName,Department,JobTitle,MobilePhone,AccountEnabled
-john.doe@contoso.com,John A. Doe,IT Infrastructure,Senior Systems Engineer,+1234567890,TRUE
-```
-
-### User Management Best Practices
-1. Always use secure passwords and enable MFA
-2. Review user access regularly
-3. Document user management procedures
-4. Use bulk operations for efficiency
-5. Maintain user lifecycle management
-6. Regular security audits
-7. Monitor user activity
-
 ### Group Management
-- `Add-MK365UserToGroup`: Adds a user to a group
+- `Add-MK365UserToGroup`: Adds user to a group
   ```powershell
   Add-MK365UserToGroup -UserPrincipalName "user@domain.com" -GroupId "group-id"
   ```
 
-- `Remove-MK365UserFromGroup`: Removes a user from a group
+- `Remove-MK365UserFromGroup`: Removes user from a group
   ```powershell
   Remove-MK365UserFromGroup -UserPrincipalName "user@domain.com" -GroupId "group-id"
   ```
 
-- `Get-MK365UserGroups`: Lists groups a user belongs to
+- `Get-MK365UserGroups`: Gets groups user belongs to
   ```powershell
   Get-MK365UserGroups -UserPrincipalName "user@domain.com"
   ```
 
 ### Access Management
-- `Get-MK365UserAccess`: Retrieves user access information including roles and permissions
+- `Get-MK365UserAccess`: Gets user access information
   ```powershell
   Get-MK365UserAccess -UserPrincipalName "user@domain.com"
   ```
 
-- `Set-MK365UserAccess`: Manages user access settings including roles and sign-in restrictions
+- `Set-MK365UserAccess`: Sets user access settings
   ```powershell
-  Set-MK365UserAccess -UserPrincipalName "user@domain.com" -BlockSignIn $false -AddDirectoryRoles @("User Administrator")
+  Set-MK365UserAccess -UserPrincipalName "user@domain.com" -BlockSignIn $false
   ```
 
 ### Security Management
-- `Get-MK365UserSignInStatus`: Retrieves user sign-in status
+- `Get-MK365UserSignInStatus`: Gets user sign-in status
   ```powershell
   Get-MK365UserSignInStatus -UserPrincipalName "user@domain.com"
   ```
 
-- `Reset-MK365UserPassword`: Resets a user's password
+- `Get-MK365UserSecurityStatus`: Gets user security information
   ```powershell
-  Reset-MK365UserPassword -UserPrincipalName "user@domain.com" -NewPassword "NewSecurePass123!" -ForceChangePasswordNextSignIn
+  Get-MK365UserSecurityStatus -UserPrincipalName "user@domain.com"
   ```
 
-- `Enable-MK365MFA`: Enables Multi-Factor Authentication for a user
+- `Reset-MK365UserPassword`: Resets user password
+  ```powershell
+  Reset-MK365UserPassword -UserPrincipalName "user@domain.com" `
+                         -NewPassword "NewSecurePass123!" `
+                         -ForceChangePasswordNextSignIn
+  ```
+
+- `Enable-MK365MFA`: Enables multi-factor authentication
   ```powershell
   Enable-MK365MFA -UserPrincipalName "user@domain.com"
   ```
 
-- `Get-MK365UserSecurityStatus`: Retrieves comprehensive security information about a user
+### Bulk Operations
+The module includes scripts for bulk operations:
+
+- `New-BulkUsers.ps1`: Creates multiple users from CSV
   ```powershell
-  Get-MK365UserSecurityStatus -UserPrincipalName "user@domain.com"
+  .\Scripts\New-BulkUsers.ps1 -CsvPath ".\Templates\NewUsers.csv"
+  ```
+
+- `Add-BulkUserGroups.ps1`: Adds users to groups in bulk
+  ```powershell
+  .\Scripts\Add-BulkUserGroups.ps1 -CsvPath ".\Templates\UserGroupAssignments.csv"
   ```
 
 ## Report Generation
