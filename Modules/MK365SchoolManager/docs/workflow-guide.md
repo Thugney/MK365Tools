@@ -354,6 +354,27 @@ This function handles:
 4. Removing devices from AutoPilot and Azure AD
 5. Generating comprehensive reports of the entire process
 
+> **Note:** For detailed guidance on model-based device reset, see the [Model-Based Reset Guide](./model-based-reset-guide.md).
+
+#### Available Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| School | Name of the school to process |
+| GradeLevels | Grade levels to target (default: "7. trinn", "10. trinn") |
+| DeviceType | Type of devices to process: PC, iPad, or All (default: All) |
+| ModelsToRetire | List of device models that should be reset |
+| ModelsToKeep | List of device models that should NOT be reset |
+| IncludeOtherGradesForRetiredModels | If set, will also reset devices with the specified models from other grades |
+| ExportInventoryReports | Generate detailed inventory reports before and after reset |
+| ReportPath | Path where reports should be saved |
+| NotifyStakeholders | Send email notifications to stakeholders |
+| NotificationEmails | Email addresses to notify |
+| AutoRemoveFromAutoPilot | Automatically remove reset devices from AutoPilot |
+| AutoRemoveFromAzureAD | Automatically remove reset devices from Azure AD |
+| SkipConfirmation | Skip confirmation prompts |
+| ScheduledDate | Schedule the reset for a future date |
+
 ### School Group Management
 
 The `Get-MK365SchoolGroup` function helps identify and manage user groups by school and grade level:
