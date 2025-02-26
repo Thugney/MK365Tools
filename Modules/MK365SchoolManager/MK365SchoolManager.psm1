@@ -2,8 +2,14 @@
 #Requires -Version 5.1
 
 function Install-RequiredModule {
+    [CmdletBinding()]
     param (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [ValidateNotNullOrEmpty()]
         [string]$ModuleName,
+        
+        [Parameter(Mandatory = $true, Position = 1)]
+        [ValidateNotNullOrEmpty()]
         [string]$RequiredVersion
     )
     
@@ -12,17 +18,17 @@ function Install-RequiredModule {
             Where-Object { $_.Version -eq $RequiredVersion }
         
         if (-not $module) {
-            Write-Host "Installing $ModuleName version $RequiredVersion..."
+            Write-Verbose "Installing $ModuleName version $RequiredVersion..."
             
             # Ensure NuGet provider is available
             if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
-                Write-Host "Installing NuGet provider..."
+                Write-Verbose "Installing NuGet provider..."
                 Install-PackageProvider -Name NuGet -Force -Scope CurrentUser | Out-Null
             }
             
             # Ensure PSGallery is trusted
             if ((Get-PSRepository -Name "PSGallery").InstallationPolicy -ne "Trusted") {
-                Write-Host "Setting PSGallery as trusted..."
+                Write-Verbose "Setting PSGallery as trusted..."
                 Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
             }
             
@@ -31,7 +37,7 @@ function Install-RequiredModule {
             if ($moduleInGallery) {
                 # Install the module
                 $moduleInGallery | Install-Module -Force -AllowClobber -Scope CurrentUser -ErrorAction Stop
-                Write-Host "Successfully installed $ModuleName"
+                Write-Verbose "Successfully installed $ModuleName"
             }
             else {
                 throw "Module $ModuleName version $RequiredVersion not found in PSGallery"
@@ -39,19 +45,26 @@ function Install-RequiredModule {
         }
         
         # Import the module
-        Import-Module -Name $ModuleName -RequiredVersion $RequiredVersion -Force -ErrorAction Stop
-        Write-Host "Successfully loaded $ModuleName version $RequiredVersion"
+        Import-Module -Name $ModuleName -RequiredVersion $RequiredVersion -Force -ErrorAction Stop -Verbose:$false
+        Write-Verbose "Successfully loaded $ModuleName version $RequiredVersion"
         return $true
     }
     catch {
-        Write-Warning "Error with module $ModuleName`: $_"
+        Write-Error "Error with module $ModuleName`: $_"
         return $false
     }
 }
 
 function Initialize-MK365Dependencies {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter()]
+        [switch]$Force,
+        
+        [Parameter()]
+        [ValidateSet('CurrentUser', 'AllUsers')]
+        [string]$Scope = 'CurrentUser'
+    )
     
     $success = $true
     
@@ -68,6 +81,7 @@ function Initialize-MK365Dependencies {
     )
     
     foreach ($module in $modules) {
+        Write-Verbose "Processing module: $($module.Name)"
         if (-not (Install-RequiredModule -ModuleName $module.Name -RequiredVersion $module.Version)) {
             $success = $false
             Write-Warning "Failed to install or load $($module.Name)"
