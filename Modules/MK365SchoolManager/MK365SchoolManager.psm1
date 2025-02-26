@@ -14,18 +14,23 @@ function Install-RequiredModule {
         if (-not $module) {
             Write-Host "Installing $ModuleName version $RequiredVersion..."
             
-            # Ensure we have access to PSGallery
-            $gallery = Get-PSRepository -Name "PSGallery" -ErrorAction SilentlyContinue
-            if (-not $gallery) {
-                Write-Host "Registering PSGallery..."
-                Register-PSRepository -Default -ErrorAction Stop
+            # Ensure NuGet provider is available
+            if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
+                Write-Host "Installing NuGet provider..."
+                Install-PackageProvider -Name NuGet -Force -Scope CurrentUser | Out-Null
+            }
+            
+            # Ensure PSGallery is trusted
+            if ((Get-PSRepository -Name "PSGallery").InstallationPolicy -ne "Trusted") {
+                Write-Host "Setting PSGallery as trusted..."
+                Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
             }
             
             # Try to find the module in PSGallery
             $moduleInGallery = Find-Module -Name $ModuleName -RequiredVersion $RequiredVersion -ErrorAction Stop
             if ($moduleInGallery) {
                 # Install the module
-                $moduleInGallery | Install-Module -Force -AllowClobber -ErrorAction Stop
+                $moduleInGallery | Install-Module -Force -AllowClobber -Scope CurrentUser -ErrorAction Stop
                 Write-Host "Successfully installed $ModuleName"
             }
             else {
@@ -50,30 +55,22 @@ function Initialize-MK365Dependencies {
     
     $success = $true
     
-    # Install NuGet if needed
-    if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
-        Write-Host "Installing NuGet provider..."
-        Install-PackageProvider -Name NuGet -Force -Scope CurrentUser | Out-Null
-    }
-    
     # Required modules with their versions
     $modules = @(
         @{ Name = 'Microsoft.Graph.Authentication'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.DeviceManagement'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.Identity.DirectoryManagement'; Version = '2.26.1' },
         @{ Name = 'Microsoft.Graph.Users'; Version = '2.26.1' },
         @{ Name = 'Microsoft.Graph.Groups'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.Beta.DeviceManagement'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.DeviceManagement.Administration'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.DeviceManagement.Actions'; Version = '2.25.0' },
+        @{ Name = 'Microsoft.Graph.DeviceManagement'; Version = '2.26.1' },
+        @{ Name = 'Microsoft.Graph.DeviceManagement.Actions'; Version = '2.26.1' },
         @{ Name = 'Microsoft.Graph.DeviceManagement.Functions'; Version = '2.26.1' },
         @{ Name = 'Microsoft.Graph.DeviceManagement.Enrollment'; Version = '2.26.1' },
-        @{ Name = 'MK365DeviceManager'; Version = '1.0.0' }
+        @{ Name = 'Microsoft.Graph.Identity.DirectoryManagement'; Version = '2.26.1' }
     )
     
     foreach ($module in $modules) {
         if (-not (Install-RequiredModule -ModuleName $module.Name -RequiredVersion $module.Version)) {
             $success = $false
+            Write-Warning "Failed to install or load $($module.Name)"
         }
     }
     
