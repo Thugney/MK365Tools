@@ -1,12 +1,12 @@
 # MK365Tools - Microsoft 365 Management Tools
 
-[![GitHub Release](https://img.shields.io/github/v/release/MK365Tools/MK365Tools)](https://github.com/MK365Tools/MK365Tools/releases/latest)
-[![License](https://img.shields.io/github/license/MK365Tools/MK365Tools)](https://github.com/MK365Tools/MK365Tools/blob/main/LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/Thugney/MK365Tools)](https://github.com/Thugney/MK365Tools/releases/latest)
+[![License](https://img.shields.io/github/license/Thugney/MK365Tools)](https://github.com/Thugney/MK365Tools/blob/main/LICENSE)
 [![Twitter Follow](https://img.shields.io/twitter/follow/eriteach?style=social)](https://twitter.com/eriteach)
 
 > ⚠️ **Development Version Notice**
 > 
-> This is the development branch of MK365Tools. For production use, please use the [main branch](https://github.com/MK365Tools/MK365Tools/tree/main).
+> This is the development branch of MK365Tools. For production use, please use the [main branch](https://github.com/Thugney/MK365Tools/tree/main).
 > Features in this branch may be unstable or incomplete.
 
 A comprehensive PowerShell module collection for managing Microsoft 365 devices, users, security, and compliance through Microsoft Graph API.
@@ -15,7 +15,7 @@ A comprehensive PowerShell module collection for managing Microsoft 365 devices,
 
 1. Clone the repository:
 ```powershell
-git clone https://github.com/MK365Tools/MK365Tools.git
+git clone https://github.com/Thugney/MK365Tools.git
 ```
 
 2. Import the modules:
@@ -31,7 +31,7 @@ $env:PSModulePath = $env:PSModulePath + ";$PWD\Modules"
 
 ## Version
 Development version: 1.2.0-dev
-For stable version (1.1.0), see the [main branch](https://github.com/MK365Tools/MK365Tools/tree/main).
+For stable version (1.1.0), see the [main branch](https://github.com/Thugney/MK365Tools/tree/main).
 
 ## Features
 
