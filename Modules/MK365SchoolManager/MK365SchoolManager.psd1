@@ -2,7 +2,7 @@
 @{
     RootModule = 'MK365SchoolManager.psm1'
     ModuleVersion = '1.1.0'
-    GUID = 'c4d5e6f7-g8h9-4i0j-k1l2-m3n4o5p6q7r8'
+    GUID = '98765432-dcba-fedc-4321-0fedcba98765'
     Author = 'Thugney'
     CompanyName = 'MK365Tools'
     Copyright = '(c) 2025 Thugney. All rights reserved.'

@@ -2,7 +2,7 @@
 @{
     RootModule = 'MK365UserManager.psm1'
     ModuleVersion = '1.1.0'
-    GUID = 'b2c3d4e5-f6g7-48h9-i0j1-k2l3m4n5o6p7'
+    GUID = '12345678-90ab-cdef-1234-567890abcdef'
     Author = 'Thugney'
     CompanyName = 'MK365Tools'
     Copyright = '(c) 2025 Thugney. All rights reserved.'
