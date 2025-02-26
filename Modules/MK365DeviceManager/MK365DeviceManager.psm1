@@ -479,6 +479,7 @@ function Register-MK365AutopilotDevices {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$CsvPath,
         
         [Parameter()]
@@ -522,17 +523,24 @@ function Register-MK365AutopilotDevices {
                     continue
                 }
                 
-                # Prepare device registration parameters
+                # Prepare device registration parameters as a proper BodyParameter
                 $autopilotDevice = @{
                     SerialNumber = $device.SerialNumber
                     HardwareIdentifier = $device.HardwareIdentifier
-                    ProductKey = if ($device.ProductKey) { $device.ProductKey } else { $null }
-                    GroupTag = if ($device.GroupTag) { $device.GroupTag } else { $null }
                 }
                 
-                # Register device using Microsoft Graph
-                $newDevice = New-MgDeviceManagementWindowsAutopilotDeviceIdentity -BodyParameter $autopilotDevice
+                # Add optional parameters only if they exist
+                if ($device.ProductKey) { 
+                    $autopilotDevice.ProductKey = $device.ProductKey 
+                }
                 
+                if ($device.GroupTag) { 
+                    $autopilotDevice.GroupTag = $device.GroupTag 
+                }
+                
+                # Register device using Microsoft Graph with proper BodyParameter
+                $newDevice = New-MgDeviceManagementWindowsAutopilotDeviceIdentity -BodyParameter $autopilotDevice
+
                 # If group assignment is requested and GroupId is provided
                 if ($AssignToGroup -and $GroupId) {
                     Write-M365Log "Assigning device to group: $GroupId"
@@ -630,13 +638,17 @@ function Get-MK365DeviceCompliance {
     [CmdletBinding()]
     param(
         [Parameter()]
+        [ValidateNotNullOrEmpty()]
         [string]$DeviceFilter,
         
         [Parameter()]
         [switch]$IncludeRiskDetails,
         
         [Parameter()]
-        [switch]$ExportReport
+        [switch]$ExportReport,
+        
+        [Parameter()]
+        [string]$OutputPath = (Get-Location).Path
     )
     
     try {
@@ -644,8 +656,10 @@ function Get-MK365DeviceCompliance {
         
         Write-M365Log "Retrieving device compliance information..."
         
-        # Get all managed devices
+        # Get all managed devices using proper parameters
         $devices = Get-MgDeviceManagementManagedDevice -All
+        
+        # Apply filter if specified
         if ($DeviceFilter) {
             $devices = $devices | Where-Object {
                 $_.DeviceName -like "*$DeviceFilter*" -or
@@ -680,7 +694,7 @@ function Get-MK365DeviceCompliance {
         
         if ($ExportReport) {
             $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-            $reportPath = Join-Path (Get-Location) "DeviceCompliance-$timestamp.csv"
+            $reportPath = Join-Path $OutputPath "DeviceCompliance-$timestamp.csv"
             $complianceReport | Export-Csv -Path $reportPath -NoTypeInformation
             Write-M365Log "Compliance report exported to: $reportPath"
         }
@@ -697,6 +711,7 @@ function Get-MK365AppDeploymentStatus {
     [CmdletBinding()]
     param(
         [Parameter()]
+        [ValidateNotNullOrEmpty()]
         [string]$AppName,
         
         [Parameter()]
@@ -704,15 +719,20 @@ function Get-MK365AppDeploymentStatus {
         [string]$Status = 'All',
         
         [Parameter()]
-        [switch]$ExportReport
+        [switch]$ExportReport,
+        
+        [Parameter()]
+        [string]$OutputPath = (Get-Location).Path
     )
     
     try {
         Connect-MK365Device
         Write-M365Log "Retrieving app deployment status..."
         
-        # Get all mobile apps
+        # Get all mobile apps using Microsoft Graph
         $apps = Get-MgDeviceAppManagementMobileApp -All
+        
+        # Filter by app name if specified
         if ($AppName) {
             $apps = $apps | Where-Object { $_.DisplayName -like "*$AppName*" }
         }
@@ -720,7 +740,7 @@ function Get-MK365AppDeploymentStatus {
         $deploymentStatus = foreach ($app in $apps) {
             Write-M365Log "Processing app: $($app.DisplayName)"
             
-            # Get app installation states
+            # Get app installation states using Microsoft Graph
             $installStates = Get-MgDeviceAppManagementMobileAppInstallStatus -MobileAppId $app.Id
             
             # Filter by status if specified
@@ -729,7 +749,7 @@ function Get-MK365AppDeploymentStatus {
             }
             
             foreach ($state in $installStates) {
-                # Get device details
+                # Get device details using Microsoft Graph
                 $device = Get-MgDeviceManagementManagedDevice -ManagedDeviceId $state.DeviceId
                 
                 [PSCustomObject]@{
@@ -747,7 +767,7 @@ function Get-MK365AppDeploymentStatus {
                 }
             }
         }
-        
+
         # Generate summary
         $summary = @{
             TotalApps = $apps.Count
@@ -770,7 +790,8 @@ function Get-MK365AppDeploymentStatus {
         
         # Export report if requested
         if ($ExportReport) {
-            $reportPath = Join-Path -Path (Get-Location) -ChildPath "AppDeploymentStatus_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+            $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+            $reportPath = Join-Path -Path $OutputPath -ChildPath "AppDeploymentStatus_$timestamp.csv"
             $deploymentStatus | Export-Csv -Path $reportPath -NoTypeInformation
             Write-M365Log "Report exported to: $reportPath"
         }
@@ -1269,7 +1290,13 @@ function Set-MK365DeviceGroupAssignment {
             if ($Action -eq 'Add' -and -not $isCurrentMember) {
                 if ($PSCmdlet.ShouldProcess($device.DeviceName, "Add to group $GroupId")) {
                     try {
-                        New-MgGroupMember -GroupId $GroupId -DirectoryObjectId $deviceAzureADId
+                        # Create the proper reference format for the group member
+                        $params = @{
+                            "@odata.id" = "https://graph.microsoft.com/v1.0/directoryObjects/$deviceAzureADId"
+                        }
+                        
+                        # Add device to group using Microsoft Graph cmdlet with correct parameters
+                        New-MgGroupMemberByRef -GroupId $GroupId -BodyParameter $params
                         Write-M365Log "Added device '$($device.DeviceName)' to group"
                         $processedCount++
                     }
@@ -1282,6 +1309,7 @@ function Set-MK365DeviceGroupAssignment {
             elseif ($Action -eq 'Remove' -and $isCurrentMember) {
                 if ($PSCmdlet.ShouldProcess($device.DeviceName, "Remove from group $GroupId")) {
                     try {
+                        # Remove device from group using Microsoft Graph cmdlet
                         Remove-MgGroupMemberByRef -GroupId $GroupId -DirectoryObjectId $deviceAzureADId
                         Write-M365Log "Removed device '$($device.DeviceName)' from group"
                         $processedCount++

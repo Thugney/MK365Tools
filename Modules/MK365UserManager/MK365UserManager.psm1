@@ -295,6 +295,7 @@ function Set-MK365UserProperties {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$UserPrincipalName,
         
         [Parameter(Mandatory = $false)]
@@ -320,7 +321,7 @@ function Set-MK365UserProperties {
             throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
         }
 
-        # Prepare update parameters
+        # Prepare update parameters as a hashtable for BodyParameter
         $updateParams = @{}
         if ($PSBoundParameters.ContainsKey('DisplayName')) { $updateParams['DisplayName'] = $DisplayName }
         if ($PSBoundParameters.ContainsKey('Department')) { $updateParams['Department'] = $Department }
@@ -328,10 +329,12 @@ function Set-MK365UserProperties {
         if ($PSBoundParameters.ContainsKey('MobilePhone')) { $updateParams['MobilePhone'] = $MobilePhone }
         if ($PSBoundParameters.ContainsKey('AccountEnabled')) { $updateParams['AccountEnabled'] = $AccountEnabled }
 
-        # Update user using Microsoft Graph cmdlet
-        $updatedUser = Update-MgUser -UserId $UserPrincipalName -BodyParameter $updateParams
+        # Update user using Microsoft Graph cmdlet with BodyParameter
+        Update-MgUser -UserId $UserPrincipalName -BodyParameter $updateParams
         Write-Verbose "Updated user properties for: $UserPrincipalName"
-        return $updatedUser
+        
+        # Return the updated user object
+        return Get-MgUser -UserId $UserPrincipalName
     }
     catch {
         Write-Error "Failed to update user properties: $_"
@@ -394,9 +397,11 @@ function Add-MK365UserToGroup {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$UserPrincipalName,
         
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$GroupId
     )
     
@@ -407,8 +412,16 @@ function Add-MK365UserToGroup {
             throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
         }
 
-        # Add user to group using Microsoft Graph cmdlet
-        New-MgGroupMember -GroupId $GroupId -DirectoryObjectId $UserPrincipalName
+        # Get user ID if UserPrincipalName is provided
+        $userId = (Get-MgUser -UserId $UserPrincipalName).Id
+
+        # Create the proper reference format for the group member
+        $params = @{
+            "@odata.id" = "https://graph.microsoft.com/v1.0/directoryObjects/$userId"
+        }
+
+        # Add user to group using Microsoft Graph cmdlet with correct parameters
+        New-MgGroupMemberByRef -GroupId $GroupId -BodyParameter $params
         Write-Verbose "Added user $UserPrincipalName to group $GroupId"
     }
     catch {
@@ -422,9 +435,11 @@ function Remove-MK365UserFromGroup {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$UserPrincipalName,
         
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$GroupId
     )
     
@@ -435,8 +450,11 @@ function Remove-MK365UserFromGroup {
             throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
         }
 
-        # Remove user from group using Microsoft Graph cmdlet
-        Remove-MgGroupMemberByRef -GroupId $GroupId -DirectoryObjectId $UserPrincipalName
+        # Get user ID from UserPrincipalName
+        $userId = (Get-MgUser -UserId $UserPrincipalName).Id
+        
+        # Remove user from group using Microsoft Graph cmdlet with correct parameters
+        Remove-MgGroupMemberByRef -GroupId $GroupId -DirectoryObjectId $userId
         Write-Verbose "Removed user $UserPrincipalName from group $GroupId"
     }
     catch {
@@ -485,6 +503,7 @@ function Enable-MK365MFA {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$UserPrincipalName
     )
     
@@ -501,23 +520,31 @@ function Enable-MK365MFA {
         # Get current authentication methods policy
         $authMethodConfig = Get-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId "MicrosoftAuthenticator"
         
-        # Update the policy to include the user
+        # Create a new target for the user
         $newTarget = @{
             targetType = "user"
             id = $userId
             isRegistrationRequired = $true
         }
 
-        # Add the user to the included targets
-        $authMethodConfig.AdditionalProperties.includeTargets += $newTarget
+        # Get the current included targets
+        $includeTargets = $authMethodConfig.AdditionalProperties.includeTargets
+        
+        # Add the user to the included targets if not already present
+        if (-not ($includeTargets | Where-Object { $_.id -eq $userId })) {
+            $includeTargets += $newTarget
+        }
 
-        # Update the authentication method policy
+        # Prepare the body parameter for the update
+        $bodyParams = @{
+            State = "enabled"
+            includeTargets = $includeTargets
+        }
+
+        # Update the authentication method policy using BodyParameter
         Update-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration `
             -AuthenticationMethodConfigurationId "MicrosoftAuthenticator" `
-            -BodyParameter @{
-                State = "enabled"
-                includeTargets = $authMethodConfig.AdditionalProperties.includeTargets
-            }
+            -BodyParameter $bodyParams
         
         Write-Verbose "MFA enabled for user: $UserPrincipalName"
     }
