@@ -108,9 +108,11 @@ function Connect-MK365Device {
     try {
         # Check if already connected
         try {
-            $null = Get-MgContext
-            Write-M365Log "Already connected to Microsoft Graph"
-            return
+            $context = Get-MgContext
+            if ($context) {
+                Write-M365Log "Already connected to Microsoft Graph as $($context.Account)"
+                return $context
+            }
         }
         catch {
             Write-M365Log "Not connected to Microsoft Graph, initiating connection..."
@@ -126,18 +128,38 @@ function Connect-MK365Device {
         )
         
         # Connect to Microsoft Graph
-        Connect-MgGraph -Scopes $requiredScopes
+        $context = Connect-MgGraph -Scopes $requiredScopes
         
         # Verify connection
-        $context = Get-MgContext
         if (-not $context) {
             throw "Failed to connect to Microsoft Graph"
         }
         
         Write-M365Log "Successfully connected to Microsoft Graph with scopes: $($context.Scopes -join ', ')"
+        return $context
     }
     catch {
         Write-M365Log "Error connecting to Microsoft Graph: $_" -Level Error
+        throw $_
+    }
+}
+
+function Disconnect-MK365Device {
+    [CmdletBinding()]
+    param()
+    
+    try {
+        $context = Get-MgContext
+        if ($context) {
+            Disconnect-MgGraph
+            Write-M365Log "Successfully disconnected from Microsoft Graph"
+        }
+        else {
+            Write-M365Log "No active Microsoft Graph connection found"
+        }
+    }
+    catch {
+        Write-M365Log "Error disconnecting from Microsoft Graph: $_" -Level Error
         throw $_
     }
 }
@@ -1642,6 +1664,7 @@ function Get-MK365ErrorDescription {
 # Export functions
 Export-ModuleMember -Function @(
     'Connect-MK365Device',
+    'Disconnect-MK365Device',
     'Get-MK365DeviceOverview',
     'Export-MK365AutopilotDevices',
     'Register-MK365AutopilotDevices',

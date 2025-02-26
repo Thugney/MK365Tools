@@ -85,6 +85,73 @@ function Initialize-MK365Dependencies {
 # Run initialization when module is imported
 Initialize-MK365Dependencies
 
+# Function to connect to Microsoft Graph for school management
+function Connect-MK365School {
+    [CmdletBinding()]
+    param()
+    
+    try {
+        # Check if already connected
+        try {
+            $context = Get-MgContext
+            if ($context) {
+                Write-Verbose "Already connected to Microsoft Graph as $($context.Account)"
+                return $context
+            }
+        }
+        catch {
+            Write-Verbose "Not connected to Microsoft Graph, initiating connection..."
+        }
+        
+        # Required scopes for school device management
+        $requiredScopes = @(
+            'DeviceManagementApps.Read.All',
+            'DeviceManagementConfiguration.Read.All',
+            'DeviceManagementManagedDevices.Read.All',
+            'DeviceManagementServiceConfig.Read.All',
+            'Directory.Read.All',
+            'Group.Read.All',
+            'User.Read.All'
+        )
+        
+        # Connect to Microsoft Graph
+        $context = Connect-MgGraph -Scopes $requiredScopes
+        
+        # Verify connection
+        if (-not $context) {
+            throw "Failed to connect to Microsoft Graph"
+        }
+        
+        Write-Verbose "Successfully connected to Microsoft Graph with scopes: $($context.Scopes -join ', ')"
+        return $context
+    }
+    catch {
+        Write-Error "Error connecting to Microsoft Graph: $_"
+        throw
+    }
+}
+
+# Function to disconnect from Microsoft Graph
+function Disconnect-MK365School {
+    [CmdletBinding()]
+    param()
+    
+    try {
+        $context = Get-MgContext
+        if ($context) {
+            Disconnect-MgGraph
+            Write-Verbose "Successfully disconnected from Microsoft Graph"
+        }
+        else {
+            Write-Verbose "No active Microsoft Graph connection found"
+        }
+    }
+    catch {
+        Write-Error "Error disconnecting from Microsoft Graph: $_"
+        throw
+    }
+}
+
 # Import all public functions
 $Public = @(Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -ErrorAction SilentlyContinue)
 $Private = @(Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -ErrorAction SilentlyContinue)
@@ -98,5 +165,9 @@ foreach ($import in @($Public + $Private)) {
     }
 }
 
-# Export public functions
-Export-ModuleMember -Function $Public.BaseName
+# Export public functions and connection functions
+Export-ModuleMember -Function @(
+    'Connect-MK365School',
+    'Disconnect-MK365School',
+    $Public.BaseName
+)

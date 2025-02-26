@@ -96,6 +96,13 @@ function Connect-MK365User {
     )
     
     try {
+        # Check if already connected
+        $context = Get-MgContext
+        if ($context) {
+            Write-Verbose "Already connected to Microsoft 365 tenant: $($context.TenantId) as $($context.Account)"
+            return $context
+        }
+
         $params = @{}
         
         if ($TenantId) {
@@ -112,10 +119,9 @@ function Connect-MK365User {
         }
         
         # Connect to Microsoft Graph
-        Connect-MgGraph @params
+        $context = Connect-MgGraph @params
         
         # Get and display current connection information
-        $context = Get-MgContext
         if ($context) {
             Write-Verbose "Successfully connected to Microsoft 365 tenant: $($context.TenantId)"
             Write-Verbose "Connected as: $($context.Account)"
@@ -126,6 +132,27 @@ function Connect-MK365User {
     }
     catch {
         Write-Error "Failed to connect to Microsoft 365: $_"
+        throw
+    }
+}
+
+# Function to disconnect from Microsoft 365
+function Disconnect-MK365User {
+    [CmdletBinding()]
+    param()
+    
+    try {
+        $context = Get-MgContext
+        if ($context) {
+            Disconnect-MgGraph
+            Write-Verbose "Successfully disconnected from Microsoft 365 tenant: $($context.TenantId)"
+        }
+        else {
+            Write-Verbose "No active Microsoft 365 connection found"
+        }
+    }
+    catch {
+        Write-Error "Failed to disconnect from Microsoft 365: $_"
         throw
     }
 }
@@ -672,6 +699,7 @@ function Set-MK365UserAccess {
 # Export all functions
 Export-ModuleMember -Function @(
     'Connect-MK365User',
+    'Disconnect-MK365User',
     'Get-MK365UserOverview',
     'New-MK365User',
     'Set-MK365UserProperties',
