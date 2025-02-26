@@ -1,5 +1,35 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+## [Unreleased]
+
+### Added
+- New MK365SchoolManager module for school-specific device management
+  - Device inventory tracking and reporting
+  - Automated device reset workflows
+  - School-specific configuration management
+  - Integration with education-specific features
+- New Graph module dependencies:
+  - Microsoft.Graph.DeviceManagement.Administration
+  - Microsoft.Graph.DeviceManagement.Functions
+  - Microsoft.Graph.DeviceManagement.Enrollment
+
+### Changed
+- Updated all Microsoft Graph PowerShell SDK dependencies to v2.26.1
+- Updated Microsoft.Graph.DeviceManagement.Actions to v2.25.0
+- Added new Graph module dependencies for enhanced device management capabilities
+- Standardized Graph module version requirements across all modules
+- Improved module version consistency in manifest files
+- Enhanced documentation with quick start guides and examples
+- Updated installation instructions for all modules
+
+### Documentation
+- Added comprehensive documentation for MK365SchoolManager
+- Updated main README with school management features
+- Added quick start guides for all modules
+- Improved module dependency documentation
+
 ## [1.0.0-dev] - 2025-02-25
 
 ### Added
@@ -20,21 +50,6 @@
 - Established main/development branch workflow
 - Added version control guidelines
 - Created development environment configuration
-
-## [Unreleased]
-
-### Changed
-- Updated all Microsoft Graph PowerShell SDK dependencies to v2.26.1
-- Updated Microsoft.Graph.DeviceManagement.Actions to v2.25.0
-- Added new Graph module dependencies for enhanced device management capabilities
-- Standardized Graph module version requirements across all modules
-- Improved module version consistency in manifest files
-
-### Added
-- New Graph module dependencies:
-  - Microsoft.Graph.DeviceManagement.Administration
-  - Microsoft.Graph.DeviceManagement.Functions
-  - Microsoft.Graph.DeviceManagement.Enrollment
 
 ## [1.0.0] - 2025-02-25
 

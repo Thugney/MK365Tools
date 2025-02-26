@@ -12,6 +12,14 @@ A comprehensive PowerShell module collection for managing Microsoft 365 devices,
 
 ## Features
 
+### School Management (MK365SchoolManager)
+- Comprehensive school device lifecycle management
+- Automated device reset workflows
+- Device inventory tracking and reporting
+- School-specific configuration management
+- Bulk device operations with detailed logging
+- Integration with education-specific features
+
 ### User Management (MK365UserManager)
 - User lifecycle management (creation, modification, deletion)
 - Group membership and access control
@@ -72,13 +80,72 @@ Install-Module Microsoft.Graph -MinimumVersion 2.26.1 -Force
 ## Installation
 
 ```powershell
-# Clone the repository
-git clone https://github.com/Thugney/MK365Tools.git
+# Install from PowerShell Gallery (recommended)
+Install-Module -Name MK365Tools -Force
 
-# Import the modules
-Import-Module .\Modules\MK365DeviceManager\MK365DeviceManager.psm1
-Import-Module .\Modules\MK365UserManager\MK365UserManager.psm1
+# Or install individual modules
+Install-Module -Name MK365SchoolManager -Force
+Install-Module -Name MK365UserManager -Force
+Install-Module -Name MK365DeviceManager -Force
+
+# Import modules
+Import-Module MK365SchoolManager
+Import-Module MK365UserManager
+Import-Module MK365DeviceManager
 ```
+
+## Quick Start
+
+### School Management
+```powershell
+# Connect to Microsoft Graph
+Connect-MK365School
+
+# Get device inventory
+Get-MK365DeviceInventory -GroupName "School Devices"
+
+# Start device reset workflow
+Start-MK365ResetWorkflow -DeviceId "DEVICE-ID" -ResetType "Wipe"
+
+# Configure school settings
+Set-MK365SchoolConfig -ConfigPath "path\to\config.json"
+```
+
+### User Management
+```powershell
+# Connect to Microsoft Graph
+Connect-MK365User
+
+# Create a new user
+New-MK365User -UserPrincipalName "user@domain.com" -DisplayName "New User"
+
+# Get user information
+Get-MK365UserInfo -UserPrincipalName "user@domain.com"
+```
+
+### Device Management
+```powershell
+# Connect to Microsoft Graph
+Connect-MK365Device
+
+# Register Autopilot device
+Register-MK365AutopilotDevice -SerialNumber "SERIAL-NUMBER" -GroupTag "School-Devices"
+
+# Get device status
+Get-MK365DeviceStatus -SerialNumber "SERIAL-NUMBER"
+```
+
+## Module Documentation
+
+Each module has its own detailed documentation:
+
+- [MK365SchoolManager Documentation](./Modules/MK365SchoolManager/README.md)
+- [MK365UserManager Documentation](./Modules/MK365UserManager/README.md)
+- [MK365DeviceManager Documentation](./Modules/MK365DeviceManager/README.md)
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
 ## Usage
 
