@@ -1,6 +1,8 @@
 # MK365Tools - Microsoft 365 Management Tools
 
-[![GitHub](https://img.shields.io/github/license/Thugney/MK365Tools)](https://github.com/Thugney/MK365Tools/blob/main/LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/Thugney/MK365Tools)](https://github.com/Thugney/MK365Tools/releases/latest)
+[![License](https://img.shields.io/github/license/Thugney/MK365Tools)](https://github.com/Thugney/MK365Tools/blob/main/LICENSE)
+[![PowerShell Gallery](https://img.shields.io/powershellgallery/v/MK365Tools)](https://www.powershellgallery.com/packages/MK365Tools)
 [![Twitter Follow](https://img.shields.io/twitter/follow/eriteach?style=social)](https://twitter.com/eriteach)
 
 A comprehensive PowerShell module collection for managing Microsoft 365 devices, users, security, and compliance through Microsoft Graph API.
