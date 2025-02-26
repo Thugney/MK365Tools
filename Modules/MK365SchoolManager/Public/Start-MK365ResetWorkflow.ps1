@@ -18,10 +18,7 @@ function Start-MK365ResetWorkflow {
         [datetime]$ScheduledDate = (Get-Date),
 
         [Parameter()]
-        [switch]$NotifyStakeholders,
-
-        [Parameter()]
-        [switch]$WhatIf
+        [switch]$NotifyStakeholders
     )
 
     begin {
@@ -33,7 +30,7 @@ function Start-MK365ResetWorkflow {
             }
         }
         catch {
-            throw "Failed to verify Microsoft Graph connection: $_"
+            throw "Failed to verify Microsoft Graph connection: $($_.Exception.Message)"
         }
 
         # Initialize tracking variables
@@ -149,7 +146,7 @@ function Start-MK365ResetWorkflow {
                         Write-Verbose "Successfully processed device: $($device.SerialNumber)"
                     }
                     catch {
-                        Write-Error "Failed to process device $($device.SerialNumber): $_"
+                        Write-Error "Failed to process device $($device.SerialNumber): $($_.Exception.Message)"
                         $script:resetResults.Failed += $device
                     }
                 }
@@ -209,7 +206,7 @@ function Start-MK365ResetWorkflow {
             return $script:resetResults
         }
         catch {
-            Write-Error "Failed to execute reset workflow: $_"
+            Write-Error "Failed to execute reset workflow: $($_.Exception.Message)"
         }
     }
 }
