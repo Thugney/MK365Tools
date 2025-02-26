@@ -176,23 +176,21 @@ function Get-MK365UserOverview {
         }
 
         if ($UserPrincipalName) {
-            # Get specific user
-            $user = Get-MgUser -UserId $UserPrincipalName -ErrorAction Stop
+            # Get specific user with sign-in activity
+            $user = Get-MgUser -UserId $UserPrincipalName -ExpandProperty signInActivity -ErrorAction Stop
             $userInfo = [PSCustomObject]@{
                 DisplayName = $user.DisplayName
                 UserPrincipalName = $user.UserPrincipalName
                 Id = $user.Id
                 AccountEnabled = $user.AccountEnabled
                 CreatedDateTime = $user.CreatedDateTime
-                LastSignInDateTime = $null  # Will be populated if -Detailed switch is used
+                LastSignInDateTime = $user.SignInActivity.LastSignInDateTime
             }
 
             if ($Detailed) {
-                # Get sign-in information
-                $signIns = Get-MgUserSignInActivity -UserId $user.Id -ErrorAction SilentlyContinue
-                if ($signIns) {
-                    $userInfo.LastSignInDateTime = $signIns.LastSignInDateTime
-                }
+                # Add more detailed information if needed
+                $userInfo | Add-Member -NotePropertyName 'LastNonInteractiveSignInDateTime' -NotePropertyValue $user.SignInActivity.LastNonInteractiveSignInDateTime
+                $userInfo | Add-Member -NotePropertyName 'LastSignInRequestId' -NotePropertyValue $user.SignInActivity.LastSignInRequestId
             }
 
             return $userInfo
