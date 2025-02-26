@@ -2,7 +2,7 @@
 @{
     RootModule = 'MK365DeviceManager.psm1'
     ModuleVersion = '1.1.0'
-    GUID = 'a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6'
+    GUID = 'a1b2c3d4-e5f6-4708-b9e0-31c2d3a4b5c6'
     Author = 'Thugney'
     CompanyName = 'MK365Tools'
     Copyright = '(c) 2025 Thugney. All rights reserved.'
@@ -10,7 +10,8 @@
     PowerShellVersion = '5.1'
     RequiredModules = @(
         @{ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.26.1'},
-        @{ModuleName = 'Microsoft.Graph.DeviceManagement'; ModuleVersion = '2.26.1'}
+        @{ModuleName = 'Microsoft.Graph.DeviceManagement'; ModuleVersion = '2.26.1'},
+        @{ModuleName = 'Microsoft.Graph.Intune'; ModuleVersion = '6.1907.1.0'}
     )
     FunctionsToExport = @(
         'Connect-MK365Device',
