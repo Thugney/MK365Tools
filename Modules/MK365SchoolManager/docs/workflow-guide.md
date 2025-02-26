@@ -209,7 +209,7 @@ $planningReport = [PSCustomObject]@{
     TotalDevices = $inventory.Count
     DevicesToReset = $devicesToRetire.Count
     ByGrade = $gradeDevices
-    ByModel = $devicesToRetire | Group-Object Model | Select-Object Name, Count
+    ByModel = $devicesToRetire | group-Object Model | Select-Object Name, Count
     LowStorage = $devicesToRetire | Where-Object { $_.StorageFree -lt 10 }
 }
 
@@ -321,6 +321,77 @@ foreach ($device in $completedDevices) {
 
 # 6.3 Update inventory
 Get-MK365DeviceInventory -ExportReport -OutputPath "post_reset_inventory.csv"
+```
+
+## End-of-Year Device Management Process
+
+The MK365SchoolManager module now includes a comprehensive end-of-year device management solution that automates the entire workflow for resetting and retiring school devices.
+
+### Automated End-of-Year Process
+
+The `Start-MK365EndOfYearProcess` function provides a complete solution for managing devices at the end of the school year:
+
+```powershell
+# Basic usage for 7th and 10th grade devices
+Start-MK365EndOfYearProcess -School "Eksempel Skole" -GradeLevels "7. trinn","10. trinn" -ExportInventoryReports
+
+# Advanced usage with model-based selection
+Start-MK365EndOfYearProcess -School "Eksempel Skole" -GradeLevels "7. trinn","10. trinn" `
+    -ModelsToRetire "Surface Laptop 2","iPad 7th Generation" `
+    -ModelsToKeep "Surface Laptop 4","Surface Laptop 3" `
+    -IncludeOtherGradesForRetiredModels `
+    -NotifyStakeholders `
+    -NotificationEmails "it@school.com","admin@school.com" `
+    -AutoRemoveFromAutoPilot `
+    -AutoRemoveFromAzureAD `
+    -ExportInventoryReports
+```
+
+This function handles:
+1. Identifying devices to reset based on grade levels and/or device models
+2. Generating detailed inventory reports
+3. Resetting eligible devices
+4. Removing devices from AutoPilot and Azure AD
+5. Generating comprehensive reports of the entire process
+
+### School Group Management
+
+The `Get-MK365SchoolGroup` function helps identify and manage user groups by school and grade level:
+
+```powershell
+# Get all groups for a school
+$schoolGroups = Get-MK365SchoolGroup -School "Eksempel Skole"
+
+# Get groups for specific grade levels with member details
+$gradeGroups = Get-MK365SchoolGroup -School "Eksempel Skole" -GradeLevels "7. trinn","10. trinn" -IncludeMembers
+
+# Export group report
+Get-MK365SchoolGroup -School "Eksempel Skole" -ExportReport
+```
+
+### Enhanced Device Reporting
+
+The `Get-MK365DeviceReport` function provides detailed reports about school devices:
+
+```powershell
+# Generate a basic device report
+$deviceReport = Get-MK365DeviceReport -School "Eksempel Skole"
+
+# Generate a detailed report with user and group information
+$detailedReport = Get-MK365DeviceReport -School "Eksempel Skole" -GradeLevels "7. trinn","10. trinn" `
+    -DeviceType "PC" -IncludeUserDetails -IncludeGroupDetails -ExportReport -ReportFormat "Excel"
+```
+
+### Retiring Devices
+
+The `Remove-MK365RetiredDevice` function helps remove devices from management systems:
+
+```powershell
+# Remove specific devices by serial number
+Remove-MK365RetiredDevice -SerialNumbers "ABC123","DEF456" -RemoveFromAutoPilot -RemoveFromAzureAD -ExportResults
+
+# Remove devices from a CSV report
+Remove-MK365RetiredDevice -CsvReportPath "DevicesToRetire.csv" -RemoveFromAutoPilot -RemoveFromAzureAD -ExportResults
 ```
 
 ## Quick Start Commands
