@@ -5,11 +5,6 @@
 [![PowerShell Gallery](https://img.shields.io/powershellgallery/v/MK365Tools)](https://www.powershellgallery.com/packages/MK365Tools)
 [![Twitter Follow](https://img.shields.io/twitter/follow/eriteach?style=social)](https://twitter.com/eriteach)
 
-> **Development Version Notice**
-> 
-> This is the development branch of MK365Tools. For production use, please use the [main branch](https://github.com/Thugney/MK365Tools/tree/main).
-> Features in this branch may be unstable or incomplete.
-
 A comprehensive PowerShell module collection for managing Microsoft 365 devices, users, security, and compliance through Microsoft Graph API.
 
 ## Installation
@@ -49,8 +44,7 @@ The modules will automatically install and manage their required dependencies. H
 - Microsoft.Graph.Identity.SignIns (2.26.1)
 
 ## Version
-Development version: 1.2.0-dev
-For stable version (1.1.0), see the [main branch](https://github.com/Thugney/MK365Tools/tree/main).
+Stable version: 1.1.0
 
 ## Features
 
