@@ -8,12 +8,6 @@
     Copyright = '(c) 2025 Thugney. All rights reserved.'
     Description = 'Development version of MK365UserManager - A PowerShell module for managing Microsoft 365 users through Microsoft Graph API'
     PowerShellVersion = '5.1'
-    RequiredModules = @(
-        @{ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.26.1'},
-        @{ModuleName = 'Microsoft.Graph.Users'; ModuleVersion = '2.26.1'},
-        @{ModuleName = 'Microsoft.Graph.Groups'; ModuleVersion = '2.26.1'},
-        @{ModuleName = 'Microsoft.Graph.Identity.SignIns'; ModuleVersion = '2.26.1'}
-    )
     FunctionsToExport = @(
         'New-MK365User',
         'Set-MK365UserProperties',
