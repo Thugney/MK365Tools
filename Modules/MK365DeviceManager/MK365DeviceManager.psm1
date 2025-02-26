@@ -2,7 +2,11 @@
 # Module for managing Intune and Autopilot devices
 
 # Import required modules
-#Requires -Modules Microsoft.Graph.Intune, Microsoft.Graph.DeviceManagement
+#Requires -Version 5.1
+#Requires -PSEdition Desktop
+#Requires -Modules @{ ModuleName='Microsoft.Graph.Authentication'; ModuleVersion='2.26.1' }
+#Requires -Modules @{ ModuleName='Microsoft.Graph.DeviceManagement'; ModuleVersion='2.26.1' }
+#Requires -Modules @{ ModuleName='Microsoft.Graph.Intune'; ModuleVersion='2.26.1' }
 
 function Write-M365Log {
     [CmdletBinding()]

@@ -1,9 +1,11 @@
 # MK365SchoolManager.psm1
 
 #Requires -Version 5.1
-#Requires -Modules @{ ModuleName='Microsoft.Graph.Authentication'; ModuleVersion='2.0.0' }
-#Requires -Modules @{ ModuleName='Microsoft.Graph.DeviceManagement'; ModuleVersion='2.0.0' }
-#Requires -Modules @{ ModuleName='Microsoft.Graph.Identity.DirectoryManagement'; ModuleVersion='2.0.0' }
+#Requires -PSEdition Desktop
+
+#Requires -Modules @{ ModuleName='Microsoft.Graph.Authentication'; ModuleVersion='2.26.1' }
+#Requires -Modules @{ ModuleName='Microsoft.Graph.DeviceManagement'; ModuleVersion='2.26.1' }
+#Requires -Modules @{ ModuleName='Microsoft.Graph.Identity.DirectoryManagement'; ModuleVersion='2.26.1' }
 #Requires -Modules @{ ModuleName='MK365DeviceManager'; ModuleVersion='1.0.0' }
 
 # Import all public functions

@@ -9,8 +9,8 @@
     Description = 'Development version of MK365DeviceManager - A PowerShell module for managing Microsoft 365 devices through Microsoft Graph API'
     PowerShellVersion = '5.1'
     RequiredModules = @(
-        @{ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.0.0'},
-        @{ModuleName = 'Microsoft.Graph.DeviceManagement'; ModuleVersion = '2.0.0'}
+        @{ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.26.1'},
+        @{ModuleName = 'Microsoft.Graph.DeviceManagement'; ModuleVersion = '2.26.1'}
     )
     FunctionsToExport = @(
         'Connect-MK365Device',

@@ -21,6 +21,21 @@
 - Added version control guidelines
 - Created development environment configuration
 
+## [Unreleased]
+
+### Changed
+- Updated all Microsoft Graph PowerShell SDK dependencies to v2.26.1
+- Updated Microsoft.Graph.DeviceManagement.Actions to v2.25.0
+- Added new Graph module dependencies for enhanced device management capabilities
+- Standardized Graph module version requirements across all modules
+- Improved module version consistency in manifest files
+
+### Added
+- New Graph module dependencies:
+  - Microsoft.Graph.DeviceManagement.Administration
+  - Microsoft.Graph.DeviceManagement.Functions
+  - Microsoft.Graph.DeviceManagement.Enrollment
+
 ## [1.0.0] - 2025-02-25
 
 ### Added

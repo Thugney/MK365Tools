@@ -47,6 +47,28 @@ A comprehensive PowerShell module collection for managing Microsoft 365 devices,
 - HTML and CSV report generation
 - Automated logging and diagnostics
 
+## Prerequisites
+
+### Microsoft Graph PowerShell SDK
+The modules require the following Microsoft Graph PowerShell modules (v2.26.1):
+- Microsoft.Graph.Authentication
+- Microsoft.Graph.DeviceManagement
+- Microsoft.Graph.Identity.DirectoryManagement
+- Microsoft.Graph.Users
+- Microsoft.Graph.Groups
+- Microsoft.Graph.Beta.DeviceManagement
+- Microsoft.Graph.DeviceManagement.Administration
+- Microsoft.Graph.DeviceManagement.Actions (v2.25.0)
+- Microsoft.Graph.DeviceManagement.Functions
+- Microsoft.Graph.DeviceManagement.Enrollment
+- Microsoft.Graph.Identity.SignIns
+- Microsoft.Graph.Intune
+
+You can install all required modules using:
+```powershell
+Install-Module Microsoft.Graph -MinimumVersion 2.26.1 -Force
+```
+
 ## Installation
 
 ```powershell

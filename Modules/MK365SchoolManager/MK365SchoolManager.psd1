@@ -9,12 +9,16 @@
     Description = 'School device lifecycle management module for Microsoft 365'
     PowerShellVersion = '5.1'
     RequiredModules = @(
-        @{ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.0.0'},
-        @{ModuleName = 'Microsoft.Graph.DeviceManagement'; ModuleVersion = '2.0.0'},
-        @{ModuleName = 'Microsoft.Graph.Identity.DirectoryManagement'; ModuleVersion = '2.0.0'},
-        @{ModuleName = 'Microsoft.Graph.Users'; ModuleVersion = '2.0.0'},
-        @{ModuleName = 'Microsoft.Graph.Groups'; ModuleVersion = '2.0.0'},
-        @{ModuleName = 'Microsoft.Graph.Beta.DeviceManagement'; ModuleVersion = '2.0.0'},
+        @{ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.26.1'},
+        @{ModuleName = 'Microsoft.Graph.DeviceManagement'; ModuleVersion = '2.26.1'},
+        @{ModuleName = 'Microsoft.Graph.Identity.DirectoryManagement'; ModuleVersion = '2.26.1'},
+        @{ModuleName = 'Microsoft.Graph.Users'; ModuleVersion = '2.26.1'},
+        @{ModuleName = 'Microsoft.Graph.Groups'; ModuleVersion = '2.26.1'},
+        @{ModuleName = 'Microsoft.Graph.Beta.DeviceManagement'; ModuleVersion = '2.26.1'},
+        @{ModuleName = 'Microsoft.Graph.DeviceManagement.Administration'; ModuleVersion = '2.26.1'},
+        @{ModuleName = 'Microsoft.Graph.DeviceManagement.Actions'; ModuleVersion = '2.25.0'},
+        @{ModuleName = 'Microsoft.Graph.DeviceManagement.Functions'; ModuleVersion = '2.26.1'},
+        @{ModuleName = 'Microsoft.Graph.DeviceManagement.Enrollment'; ModuleVersion = '2.26.1'},
         @{ModuleName = 'MK365DeviceManager'; ModuleVersion = '1.0.0'}
     )
     FunctionsToExport = @(

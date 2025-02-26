@@ -50,8 +50,39 @@ function Start-MK365ResetWorkflow {
 
             # Filter eligible devices
             $eligibleDevices = $devices | Where-Object {
-                $_.ComplianceState -eq 'Compliant' -and
-                $_.ManagementState -eq 'Managed'
+                # Basic management checks
+                $basicChecks = $_.ComplianceState -eq 'Compliant' -and
+                             $_.ManagementState -eq 'Managed'
+
+                # Device state checks
+                $stateChecks = $_.DeviceName -ne $null -and
+                              $_.SerialNumber -ne $null -and
+                              $_.AzureADDeviceId -ne $null
+
+                # Storage checks (ensure device has enough storage)
+                $storageChecks = $_.StorageTotal -gt 0 -and
+                                $_.StorageFree -gt 5  # At least 5GB free
+
+                # Last sync check (device must have synced in last 30 days)
+                $lastSyncCheck = $_.LastSyncDateTime -gt (Get-Date).AddDays(-30)
+
+                # User assignment check
+                $userCheck = -not [string]::IsNullOrEmpty($_.UserPrincipalName)
+
+                # All checks must pass
+                $isEligible = $basicChecks -and $stateChecks -and $storageChecks -and $lastSyncCheck -and $userCheck
+
+                if (-not $isEligible) {
+                    Write-Verbose "Device $($_.SerialNumber) not eligible:"
+                    Write-Verbose "  Basic Checks: $basicChecks"
+                    Write-Verbose "  State Checks: $stateChecks"
+                    Write-Verbose "  Storage Checks: $storageChecks"
+                    Write-Verbose "  Last Sync Check: $lastSyncCheck"
+                    Write-Verbose "  User Check: $userCheck"
+                    $script:resetResults.NotEligible += $_
+                }
+
+                return $isEligible
             }
 
             Write-Verbose "Found $($eligibleDevices.Count) eligible devices for reset"
