@@ -4,95 +4,77 @@
 # Set module version for all exported functions
 $script:ModuleVersion = '1.1.0'
 
-function Install-RequiredModule {
+# Import required modules
+function Import-RequiredModule {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true, Position = 0)]
         [ValidateNotNullOrEmpty()]
         [string]$ModuleName,
         
-        [Parameter(Mandatory = $true, Position = 1)]
+        [Parameter(Mandatory = $false, Position = 1)]
         [ValidateNotNullOrEmpty()]
-        [string]$RequiredVersion
+        [string]$MinimumVersion
     )
     
     try {
-        $module = Get-Module -Name $ModuleName -ListAvailable | 
-            Where-Object { $_.Version -eq $RequiredVersion }
+        # Check if module is already imported
+        if (Get-Module -Name $ModuleName) {
+            Write-Verbose "Module $ModuleName is already imported"
+            return $true
+        }
         
-        if (-not $module) {
-            Write-Verbose "Installing $ModuleName version $RequiredVersion..."
-            
-            # Ensure NuGet provider is available
-            if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
-                Write-Verbose "Installing NuGet provider..."
-                Install-PackageProvider -Name NuGet -Force -Scope CurrentUser | Out-Null
+        # Check if module is available
+        $moduleAvailable = Get-Module -Name $ModuleName -ListAvailable
+        
+        if ($moduleAvailable) {
+            if ($MinimumVersion) {
+                $moduleAvailable = $moduleAvailable | Where-Object { $_.Version -ge $MinimumVersion }
             }
             
-            # Ensure PSGallery is trusted
-            if ((Get-PSRepository -Name "PSGallery").InstallationPolicy -ne "Trusted") {
-                Write-Verbose "Setting PSGallery as trusted..."
-                Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
-            }
-            
-            # Try to find the module in PSGallery
-            $moduleInGallery = Find-Module -Name $ModuleName -RequiredVersion $RequiredVersion -ErrorAction Stop
-            if ($moduleInGallery) {
-                # Install the module
-                $moduleInGallery | Install-Module -Force -AllowClobber -Scope CurrentUser -ErrorAction Stop
-                Write-Verbose "Successfully installed $ModuleName"
-            }
-            else {
-                throw "Module $ModuleName version $RequiredVersion not found in PSGallery"
+            if ($moduleAvailable) {
+                # Import the module
+                Import-Module -Name $ModuleName -MinimumVersion $MinimumVersion -Global -ErrorAction Stop
+                Write-Verbose "Successfully imported $ModuleName"
+                return $true
             }
         }
         
-        # Import the module
-        Import-Module -Name $ModuleName -RequiredVersion $RequiredVersion -Force -ErrorAction Stop -Verbose:$false
-        Write-Verbose "Successfully loaded $ModuleName version $RequiredVersion"
-        return $true
+        Write-Warning "Module $ModuleName$(if ($MinimumVersion) { " (minimum version: $MinimumVersion)" }) is not available"
+        return $false
     }
     catch {
-        Write-Error "Error with module $ModuleName`: $_"
+        Write-Warning "Failed to import module $ModuleName: $_"
         return $false
     }
 }
 
+# Initialize dependencies
 function Initialize-MK365Dependencies {
     [CmdletBinding()]
-    param(
-        [Parameter()]
-        [switch]$Force,
-        
-        [Parameter()]
-        [ValidateSet('CurrentUser', 'AllUsers')]
-        [string]$Scope = 'CurrentUser'
-    )
+    param()
+    
+    Write-Verbose "Initializing MK365SchoolManager dependencies..."
     
     $success = $true
     
     # Required modules with their versions
     $modules = @(
-        @{ Name = 'Microsoft.Graph.Authentication'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.Users'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.Groups'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.DeviceManagement'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.DeviceManagement.Actions'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.DeviceManagement.Functions'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.DeviceManagement.Enrollment'; Version = '2.26.1' },
-        @{ Name = 'Microsoft.Graph.Identity.DirectoryManagement'; Version = '2.26.1' }
+        @{ Name = 'Microsoft.Graph.Authentication'; Version = '2.17.0' },
+        @{ Name = 'Microsoft.Graph.Users'; Version = '2.17.0' },
+        @{ Name = 'Microsoft.Graph.DeviceManagement'; Version = '2.17.0' }
     )
     
     foreach ($module in $modules) {
         Write-Verbose "Processing module: $($module.Name)"
-        if (-not (Install-RequiredModule -ModuleName $module.Name -RequiredVersion $module.Version)) {
+        if (-not (Import-RequiredModule -ModuleName $module.Name -MinimumVersion $module.Version)) {
             $success = $false
-            Write-Warning "Failed to install or load $($module.Name)"
+            Write-Warning "Failed to import $($module.Name)"
         }
     }
     
     if (-not $success) {
-        Write-Warning "Some required modules could not be installed. The module may not function correctly."
+        Write-Warning "Some required modules could not be imported. The module may not function correctly."
     }
 }
 
@@ -151,22 +133,15 @@ function Disconnect-MK365School {
     param()
     
     try {
-        $context = Get-MgContext
-        if ($context) {
-            Disconnect-MgGraph
-            Write-Verbose "Successfully disconnected from Microsoft Graph"
-        }
-        else {
-            Write-Verbose "No active Microsoft Graph connection found"
-        }
+        Disconnect-MgGraph
+        Write-Verbose "Disconnected from Microsoft Graph"
     }
     catch {
         Write-Error "Error disconnecting from Microsoft Graph: $_"
-        throw
     }
 }
 
-# Import all public functions
+# Get public and private function definition files
 $Public = @(Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -ErrorAction SilentlyContinue)
 $Private = @(Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -ErrorAction SilentlyContinue)
 
@@ -180,12 +155,11 @@ foreach ($import in @($Public + $Private)) {
 }
 
 # Export public functions and connection functions
-Export-ModuleMember -Function @(
-    'Connect-MK365School',
-    'Disconnect-MK365School',
-    $Public.BaseName
-)
+Export-ModuleMember -Function 'Connect-MK365School'
+Export-ModuleMember -Function 'Disconnect-MK365School'
+Export-ModuleMember -Function 'Get-MK365DeviceInventory'
+Export-ModuleMember -Function 'Set-MK365SchoolConfig'
+Export-ModuleMember -Function 'Start-MK365ResetWorkflow'
 
-# Note: We can't directly set the Version property as it's read-only
-# The version is correctly set in the module manifest (psd1 file)
-# and should be picked up when the module is imported properly
+# Export aliases if needed
+# Export-ModuleMember -Alias *
