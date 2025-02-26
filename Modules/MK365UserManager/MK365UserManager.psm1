@@ -600,14 +600,16 @@ function Reset-MK365UserPassword {
             throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
         }
 
-        # Create password profile object
-        $passwordProfile = @{
-            "password" = $NewPassword
-            "forceChangePasswordNextSignIn" = $ForceChange.IsPresent
+        # Create password profile body parameter
+        $params = @{
+            PasswordProfile = @{
+                Password = $NewPassword
+                ForceChangePasswordNextSignIn = $ForceChange.IsPresent
+            }
         }
 
-        # Update user's password profile
-        Update-MgUser -UserId $UserPrincipalName -PasswordProfile $passwordProfile -ErrorAction Stop
+        # Update user's password using the body parameter
+        Update-MgUser -UserId $UserPrincipalName -BodyParameter $params -ErrorAction Stop
 
         Write-Verbose "Password successfully reset for user: $UserPrincipalName"
         if ($ForceChange) {
