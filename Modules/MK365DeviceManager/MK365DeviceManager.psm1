@@ -4,6 +4,9 @@
 # Import required modules
 #Requires -Version 5.1
 
+# Set module version for all exported functions
+$script:ModuleVersion = '1.1.0'
+
 function Install-RequiredModule {
     [CmdletBinding()]
     param (
@@ -1711,16 +1714,17 @@ function Get-MK365ErrorDescription {
 # Export functions
 Export-ModuleMember -Function @(
     'Connect-MK365Device',
-    'Disconnect-MK365Device',
     'Get-MK365DeviceOverview',
-    'Export-MK365AutopilotDevices',
+    'Get-MK365SecurityStatus',
+    'Get-MK365SecurityBaseline',
+    'Get-MK365UpdateCompliance',
+    'Get-MK365SystemStatus',
+    'Get-MK365AppDeploymentStatus',
     'Register-MK365AutopilotDevices',
     'Get-MK365DeviceCompliance',
-    'Get-MK365AppDeploymentStatus',
-    'Get-MK365SecurityBaseline',
-    'Export-MK365DeviceReport',
-    'Set-MK365DeviceGroupAssignment',
-    'Get-MK365SecurityStatus',
-    'Get-MK365UpdateCompliance',
-    'Get-MK365SystemStatus'
+    'Set-MK365DeviceGroupAssignment'
 )
+
+# Note: We can't directly set the Version property as it's read-only
+# The version is correctly set in the module manifest (psd1 file)
+# and should be picked up when the module is imported properly

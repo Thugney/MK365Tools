@@ -1,6 +1,9 @@
 # MK365SchoolManager.psm1
 #Requires -Version 5.1
 
+# Set module version for all exported functions
+$script:ModuleVersion = '1.1.0'
+
 function Install-RequiredModule {
     [CmdletBinding()]
     param (
@@ -182,3 +185,7 @@ Export-ModuleMember -Function @(
     'Disconnect-MK365School',
     $Public.BaseName
 )
+
+# Note: We can't directly set the Version property as it's read-only
+# The version is correctly set in the module manifest (psd1 file)
+# and should be picked up when the module is imported properly
