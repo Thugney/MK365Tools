@@ -6,12 +6,11 @@
     Author = 'Thugney'
     CompanyName = 'MK365Tools'
     Copyright = '(c) 2025 Thugney. All rights reserved.'
-    Description = 'Development version of MK365DeviceManager - A PowerShell module for managing Microsoft 365 devices through Microsoft Graph API'
+    Description = 'MK365DeviceManager - A PowerShell module for managing Microsoft 365 devices through Microsoft Graph API'
     PowerShellVersion = '5.1'
     RequiredModules = @(
         @{ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.26.1'},
-        @{ModuleName = 'Microsoft.Graph.DeviceManagement'; ModuleVersion = '2.26.1'},
-        @{ModuleName = 'Microsoft.Graph.Intune'; ModuleVersion = '6.1907.1.0'}
+        @{ModuleName = 'Microsoft.Graph.DeviceManagement'; ModuleVersion = '2.26.1'}
     )
     FunctionsToExport = @(
         'Connect-MK365Device',
@@ -25,7 +24,7 @@
     )
     PrivateData = @{
         PSData = @{
-            Tags = @('Microsoft365', 'DeviceManagement', 'Intune', 'Graph', 'Development')
+            Tags = @('Microsoft365', 'DeviceManagement', 'Intune', 'Graph')
             ProjectUri = 'https://github.com/Thugney/MK365Tools'
             LicenseUri = 'https://github.com/Thugney/MK365Tools/blob/main/LICENSE'
         }

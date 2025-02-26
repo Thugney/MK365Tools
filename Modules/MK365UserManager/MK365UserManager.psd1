@@ -6,7 +6,7 @@
     Author = 'Thugney'
     CompanyName = 'MK365Tools'
     Copyright = '(c) 2025 Thugney. All rights reserved.'
-    Description = 'Development version of MK365UserManager - A PowerShell module for managing Microsoft 365 users through Microsoft Graph API'
+    Description = 'MK365UserManager - A PowerShell module for managing Microsoft 365 users through Microsoft Graph API'
     PowerShellVersion = '5.1'
     FunctionsToExport = @(
         'New-MK365User',
@@ -23,7 +23,7 @@
     )
     PrivateData = @{
         PSData = @{
-            Tags = @('Microsoft365', 'UserManagement', 'Graph', 'Development')
+            Tags = @('Microsoft365', 'UserManagement', 'Graph')
             ProjectUri = 'https://github.com/Thugney/MK365Tools'
             LicenseUri = 'https://github.com/Thugney/MK365Tools/blob/main/LICENSE'
         }

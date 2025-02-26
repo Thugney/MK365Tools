@@ -6,7 +6,7 @@
     Author = 'Thugney'
     CompanyName = 'MK365Tools'
     Copyright = '(c) 2025 Thugney. All rights reserved.'
-    Description = 'School device lifecycle management module for Microsoft 365'
+    Description = 'MK365SchoolManager - School device lifecycle management module for Microsoft 365'
     PowerShellVersion = '5.1'
     FunctionsToExport = @(
         # Device Management
@@ -28,7 +28,7 @@
     )
     PrivateData = @{
         PSData = @{
-            Tags = @('Microsoft365', 'Education', 'DeviceManagement', 'Intune', 'Graph', 'Development')
+            Tags = @('Microsoft365', 'Education', 'DeviceManagement', 'Intune', 'Graph')
             ProjectUri = 'https://github.com/Thugney/MK365Tools'
             LicenseUri = 'https://github.com/Thugney/MK365Tools/blob/main/LICENSE'
         }
