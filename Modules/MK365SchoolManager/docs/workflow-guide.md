@@ -1,5 +1,157 @@
 # MK365SchoolManager Workflow Guide
 
+## Overview
+
+The MK365SchoolManager module provides specialized tools for managing school devices throughout their lifecycle, with a particular focus on the end-of-year reset and redistribution process. This guide explains how to use the module effectively and how the reset workflow operates.
+
+## Prerequisites
+
+Before using the MK365SchoolManager module, ensure you have:
+
+1. PowerShell 5.1 or higher
+2. The following Microsoft Graph PowerShell modules installed:
+   - Microsoft.Graph.Authentication
+   - Microsoft.Graph.DeviceManagement
+   - Microsoft.Graph.Users
+
+## Getting Started
+
+### Installation
+
+```powershell
+# Import the module
+Import-Module MK365SchoolManager
+
+# Connect to Microsoft Graph with required permissions
+Connect-MK365School
+```
+
+### Basic Configuration
+
+```powershell
+# Set up basic school configuration
+Set-MK365SchoolConfig -School "Example School" -GradeLevels "7","10"
+
+# Configure device models for lifecycle management
+$deviceModels = @{
+    RetireModels = @("Surface Laptop 2")
+    KeepModels = @("Surface Laptop 4", "Surface Laptop 3")
+}
+Set-MK365SchoolConfig -DeviceModels $deviceModels
+```
+
+## Reset Workflow Explained
+
+The `Start-MK365ResetWorkflow` function is the core of the module, providing an end-to-end solution for resetting and preparing devices for reuse.
+
+### How Grade Level Filtering Works
+
+When you specify grade levels using the `-GradeLevels` parameter (e.g., `"7","10"`), the workflow:
+
+1. Retrieves all managed devices using `Get-MK365DeviceInventory`
+2. Examines the Azure AD groups that each device's user belongs to
+3. Identifies groups with names that match grade patterns (e.g., "7A", "10B")
+4. Selects only devices where the user is in the specified grades
+
+This is particularly useful for:
+- End of middle school (grade 7) transitions
+- End of secondary education (grade 10) transitions
+- Any grade-based device collection scenario
+
+### Device Eligibility Criteria
+
+Before processing any device, the workflow checks these eligibility criteria:
+
+| Category | Criteria | Reason |
+|----------|----------|--------|
+| Management | Device is Compliant | Ensures device is in a known good state |
+| Management | Device is Managed | Confirms Intune can control the device |
+| Device State | Has valid device name | Required for identification |
+| Device State | Has serial number | Required for AutoPilot |
+| Device State | Has Azure AD device ID | Required for Azure operations |
+| Storage | Has >0 total storage | Confirms storage is readable |
+| Storage | Has ≥5GB free space | Ensures space for reset operation |
+| Connectivity | Synced within 30 days | Confirms device is active |
+| User | Has assigned user | Required for grade-based filtering |
+
+### Reset Process Steps
+
+For each eligible device, the workflow performs these operations:
+
+1. **Initiate Device Wipe**
+   - Uses `Invoke-MgWipeDeviceManagementManagedDevice`
+   - Configures wipe to remove all user data and enrollment
+
+2. **Remove from AutoPilot**
+   - Identifies the device by serial number
+   - Removes it from Windows AutoPilot
+
+3. **Remove from Azure AD**
+   - Removes the device record from Azure AD
+
+4. **Update Device Category**
+   - Changes category to "Reset Pending" for tracking
+
+5. **Track Status**
+   - Maintains lists of successful, failed, pending, and ineligible devices
+
+### Notification System
+
+When using the `-NotifyStakeholders` parameter, the workflow:
+
+1. Generates a comprehensive report with:
+   - Timestamp and school information
+   - Grade levels processed
+   - Device counts by status
+   - Detailed device information
+
+2. Exports the report to JSON format
+
+3. Emails the report to IT staff (configurable via `Set-MK365SchoolConfig`)
+
+## Testing the Workflow
+
+To safely test the reset workflow without making changes:
+
+```powershell
+# Test with WhatIf to see what would happen
+Start-MK365ResetWorkflow -GradeLevels "7","10" -WhatIf -Verbose
+```
+
+To test with a single device:
+
+```powershell
+# Identify a test device
+$testDevice = Get-MK365DeviceInventory | Select-Object -First 1
+
+# Run reset on just this device
+Start-MK365ResetWorkflow -DeviceSerialNumbers $testDevice.SerialNumber
+```
+
+## Troubleshooting
+
+If you encounter issues with the reset workflow:
+
+1. **Connection Problems**
+   - Ensure you're connected with `Connect-MK365School`
+   - Verify you have the required permissions
+
+2. **No Eligible Devices**
+   - Check the verbose output to see why devices are ineligible
+   - Use `Get-MK365DeviceInventory` to examine device properties
+
+3. **Failed Operations**
+   - Review the returned results object for details on failures
+   - Check the Microsoft Graph API permissions
+
+## Best Practices
+
+1. **Always run with `-WhatIf` first** to preview changes
+2. **Use `-Verbose`** to see detailed operation logs
+3. **Schedule resets during off-hours** using the `-ScheduledDate` parameter
+4. **Create a backup inventory report** before running large-scale resets
+5. **Test with a small subset** before processing an entire grade level
+
 ## Complete End-of-Year Device Reset Process
 
 ### 1. Initial Setup and Configuration

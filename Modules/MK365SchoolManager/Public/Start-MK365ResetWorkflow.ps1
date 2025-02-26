@@ -10,6 +10,9 @@ function Start-MK365ResetWorkflow {
 
         [Parameter()]
         [string]$School,
+        
+        [Parameter()]
+        [string[]]$DeviceSerialNumbers,
 
         [Parameter()]
         [datetime]$ScheduledDate = (Get-Date),
@@ -26,7 +29,7 @@ function Start-MK365ResetWorkflow {
         try {
             $context = Get-MgContext
             if (-not $context) {
-                throw "Not connected to Microsoft Graph. Please connect using Connect-MgGraph first."
+                throw "Not connected to Microsoft Graph. Please connect using Connect-MK365School first."
             }
         }
         catch {
@@ -47,6 +50,12 @@ function Start-MK365ResetWorkflow {
             # Get device inventory
             Write-Verbose "Retrieving device inventory..."
             $devices = Get-MK365DeviceInventory -DeviceType $DeviceType -GradeLevels $GradeLevels -School $School
+            
+            # Filter by serial numbers if provided
+            if ($DeviceSerialNumbers) {
+                Write-Verbose "Filtering devices by serial numbers..."
+                $devices = $devices | Where-Object { $_.SerialNumber -in $DeviceSerialNumbers }
+            }
 
             # Filter eligible devices
             $eligibleDevices = $devices | Where-Object {

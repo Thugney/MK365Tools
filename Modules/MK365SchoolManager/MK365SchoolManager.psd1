@@ -8,6 +8,11 @@
     Copyright = '(c) 2025 Thugney. All rights reserved.'
     Description = 'MK365SchoolManager - School device lifecycle management module for Microsoft 365'
     PowerShellVersion = '5.1'
+    RequiredModules = @(
+        @{ModuleName = 'Microsoft.Graph.Authentication'; RequiredVersion = '2.0.0'; Guid = '883916f2-d041-43f3-a4d6-cbda2ce02dd9'},
+        @{ModuleName = 'Microsoft.Graph.DeviceManagement'; RequiredVersion = '2.0.0'; Guid = '60f1138a-b726-4a86-be99-306208c3b7bb'},
+        @{ModuleName = 'Microsoft.Graph.Users'; RequiredVersion = '2.0.0'; Guid = '61a7ba0a-f5b5-4ac5-8a5a-c8a849fc7ab0'}
+    )
     FunctionsToExport = @(
         # Device Management
         'Get-MK365SchoolDevice',
@@ -24,7 +29,11 @@
         
         # Configuration
         'Set-MK365SchoolConfig',
-        'Get-MK365SchoolConfig'
+        'Get-MK365SchoolConfig',
+        
+        # Connection Management
+        'Connect-MK365School',
+        'Disconnect-MK365School'
     )
     PrivateData = @{
         PSData = @{
