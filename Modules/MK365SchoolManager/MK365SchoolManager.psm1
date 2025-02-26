@@ -44,7 +44,7 @@ function Import-RequiredModule {
         return $false
     }
     catch {
-        Write-Warning "Failed to import module $ModuleName: $_"
+        Write-Warning "Failed to import module $ModuleName. Error: $($_.Exception.Message)"
         return $false
     }
 }
@@ -122,7 +122,7 @@ function Connect-MK365School {
         return $context
     }
     catch {
-        Write-Error "Error connecting to Microsoft Graph: $_"
+        Write-Error "Error connecting to Microsoft Graph: $($_.Exception.Message)"
         throw
     }
 }
@@ -137,7 +137,7 @@ function Disconnect-MK365School {
         Write-Verbose "Disconnected from Microsoft Graph"
     }
     catch {
-        Write-Error "Error disconnecting from Microsoft Graph: $_"
+        Write-Error "Error disconnecting from Microsoft Graph: $($_.Exception.Message)"
     }
 }
 
@@ -150,7 +150,7 @@ foreach ($import in @($Public + $Private)) {
     try {
         . $import.FullName
     } catch {
-        Write-Error "Failed to import function $($import.FullName): $_"
+        Write-Error "Failed to import function $($import.FullName): $($_.Exception.Message)"
     }
 }
 
