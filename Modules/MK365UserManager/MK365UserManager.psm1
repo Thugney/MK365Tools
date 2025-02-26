@@ -581,14 +581,16 @@ function Get-MK365UserSecurityStatus {
 function Reset-MK365UserPassword {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 0)]
+        [ValidateNotNullOrEmpty()]
         [string]$UserPrincipalName,
         
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 1)]
+        [ValidateNotNullOrEmpty()]
         [string]$NewPassword,
         
-        [Parameter(Mandatory = $false)]
-        [switch]$ForceChangePasswordNextSignIn
+        [Parameter()]
+        [switch]$ForceChange
     )
     
     try {
@@ -598,9 +600,19 @@ function Reset-MK365UserPassword {
             throw "Not connected to Microsoft Graph. Please run Connect-MK365User first."
         }
 
-        # Reset password using Microsoft Graph cmdlet
-        Update-MgUserPassword -UserId $UserPrincipalName -NewPassword $NewPassword -ForceChangePasswordNextSignIn:$ForceChangePasswordNextSignIn
-        Write-Verbose "Reset password for user: $UserPrincipalName"
+        # Create password profile object
+        $passwordProfile = @{
+            "password" = $NewPassword
+            "forceChangePasswordNextSignIn" = $ForceChange.IsPresent
+        }
+
+        # Update user's password profile
+        Update-MgUser -UserId $UserPrincipalName -PasswordProfile $passwordProfile -ErrorAction Stop
+
+        Write-Verbose "Password successfully reset for user: $UserPrincipalName"
+        if ($ForceChange) {
+            Write-Verbose "User will be required to change password at next sign-in"
+        }
     }
     catch {
         Write-Error "Failed to reset password: $_"
