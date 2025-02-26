@@ -17,17 +17,18 @@ This collection of PowerShell scripts provides a simple, Excel-based approach to
 ## Prerequisites
 
 - PowerShell 5.1 or higher
-- Microsoft Graph PowerShell SDK modules
-- AzureAD module (for Azure AD device removal)
+- Microsoft Graph PowerShell modules:
+  - Microsoft.Graph.DeviceManagement
+  - Microsoft.Graph.Users
+  - Microsoft.Graph.Identity.DirectoryManagement
 - ImportExcel module (will be installed automatically if missing)
-- Appropriate permissions in Microsoft Graph and Azure AD
+- Appropriate permissions in Microsoft Graph
 
 ## Quick Start
 
 1. Connect to required services:
    ```powershell
-   Connect-MgGraph -Scopes "DeviceManagementManagedDevices.ReadWrite.All","User.Read.All","Group.Read.All"
-   Connect-AzureAD
+   Connect-MgGraph -Scopes "DeviceManagementManagedDevices.ReadWrite.All","User.Read.All","Group.Read.All","Device.ReadWrite.All"
    ```
 
 2. Export devices to Excel:

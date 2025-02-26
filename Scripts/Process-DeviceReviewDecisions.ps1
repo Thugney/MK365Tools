@@ -30,8 +30,8 @@
     .\Process-DeviceReviewDecisions.ps1 -ReviewFilePath "C:\Reports\DeviceInventoryForReview.xlsx" -RemoveFromAutoPilot -RemoveFromAzureAD -ExportResults
 
 .NOTES
-    Requires the Microsoft.Graph.* modules, AzureAD module, and ImportExcel module.
-    Make sure you're connected to Microsoft Graph and AzureAD before running this script.
+    Requires the Microsoft Graph PowerShell modules and ImportExcel module.
+    Make sure you're connected to Microsoft Graph before running this script.
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -65,26 +65,27 @@ catch {
     return
 }
 
-# Check for AzureAD module if needed
+# Check if required Microsoft Graph modules are available
 if ($RemoveFromAzureAD) {
     try {
-        $azureADModule = Get-Module -Name AzureAD -ListAvailable
-        if (-not $azureADModule) {
-            Write-Error "AzureAD module is required for removing devices from Azure AD. Please install it using: Install-Module AzureAD -Scope CurrentUser"
+        $mgDeviceModule = Get-Module -Name Microsoft.Graph.Identity.DirectoryManagement -ListAvailable
+        if (-not $mgDeviceModule) {
+            Write-Error "Microsoft.Graph.Identity.DirectoryManagement module is required for removing devices from Azure AD. Please install it using: Install-Module Microsoft.Graph.Identity.DirectoryManagement -Scope CurrentUser"
             return
         }
         
-        # Check if connected to AzureAD
-        try {
-            $azureADConnection = Get-AzureADCurrentSessionInfo -ErrorAction Stop
-        }
-        catch {
-            Write-Error "Not connected to Azure AD. Please connect using Connect-AzureAD first."
+        # Check if connected to Microsoft Graph with the right permissions
+        $requiredPermissions = @('Device.ReadWrite.All')
+        $currentPermissions = (Get-MgContext).Scopes
+        
+        $missingPermissions = $requiredPermissions | Where-Object { $_ -notin $currentPermissions }
+        if ($missingPermissions) {
+            Write-Error "Missing required permissions: $($missingPermissions -join ', '). Please reconnect using: Connect-MgGraph -Scopes $($requiredPermissions -join ',')"
             return
         }
     }
     catch {
-        Write-Error "AzureAD module check failed: $($_.Exception.Message)"
+        Write-Error "Microsoft Graph module check failed: $($_.Exception.Message)"
         return
     }
 }
@@ -111,7 +112,7 @@ if ($ExportResults -and -not (Test-Path -Path $OutputPath)) {
 Import-Module Microsoft.Graph.DeviceManagement
 Import-Module ImportExcel
 if ($RemoveFromAzureAD) {
-    Import-Module AzureAD
+    Import-Module Microsoft.Graph.Identity.DirectoryManagement
 }
 
 # Initialize results tracking
@@ -252,17 +253,17 @@ try {
                 
                 # Check if we have Azure AD Object ID
                 if ($device.AzureADObjectId) {
-                    # Remove from Azure AD
-                    Remove-AzureADDevice -ObjectId $device.AzureADObjectId
+                    # Remove from Azure AD using Microsoft Graph
+                    Remove-MgDevice -DeviceId $device.AzureADObjectId
                     $results.AzureADRemovalResults.Successful += $device
                     Write-Verbose "Successfully removed device $($device.SerialNumber) from Azure AD"
                 }
                 else {
                     # Try to find the device in Azure AD by device ID
-                    $azureDevice = Get-AzureADDevice -Filter "DeviceId eq '$($device.AzureADDeviceId)'"
+                    $azureDevice = Get-MgDevice -Filter "DeviceId eq '$($device.AzureADDeviceId)'"
                     
                     if ($azureDevice) {
-                        Remove-AzureADDevice -ObjectId $azureDevice.ObjectId
+                        Remove-MgDevice -DeviceId $azureDevice.Id
                         $results.AzureADRemovalResults.Successful += $device
                         Write-Verbose "Successfully removed device $($device.SerialNumber) from Azure AD"
                     }

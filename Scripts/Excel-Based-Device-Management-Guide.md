@@ -16,12 +16,11 @@ Before using these scripts, ensure you have:
 2. The following PowerShell modules installed:
    - Microsoft.Graph.DeviceManagement
    - Microsoft.Graph.Users
-   - AzureAD (for Azure AD device removal)
+   - Microsoft.Graph.Identity.DirectoryManagement (for Azure AD device removal)
    - ImportExcel (will be installed automatically if missing)
 
 3. Appropriate permissions:
-   - Microsoft Graph: `DeviceManagementManagedDevices.ReadWrite.All`, `User.Read.All`, `Group.Read.All`
-   - Azure AD: Admin permissions for device management
+   - Microsoft Graph: `DeviceManagementManagedDevices.ReadWrite.All`, `User.Read.All`, `Group.Read.All`, `Device.ReadWrite.All`
 
 ## Workflow Steps
 
@@ -30,9 +29,8 @@ Before using these scripts, ensure you have:
 First, export your device inventory to an Excel file for review:
 
 ```powershell
-# Connect to required services
-Connect-MgGraph -Scopes "DeviceManagementManagedDevices.ReadWrite.All","User.Read.All","Group.Read.All"
-Connect-AzureAD  # Required for Azure AD device removal
+# Connect to Microsoft Graph with required permissions
+Connect-MgGraph -Scopes "DeviceManagementManagedDevices.ReadWrite.All","User.Read.All","Group.Read.All","Device.ReadWrite.All"
 
 # Export all devices for a school
 .\Export-DeviceInventoryForReview.ps1 -School "Eksempel Skole"
