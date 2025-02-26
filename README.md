@@ -5,11 +5,34 @@
 [![PowerShell Gallery](https://img.shields.io/powershellgallery/v/MK365Tools)](https://www.powershellgallery.com/packages/MK365Tools)
 [![Twitter Follow](https://img.shields.io/twitter/follow/eriteach?style=social)](https://twitter.com/eriteach)
 
+> ⚠️ **Development Version Notice**
+> 
+> This is the development branch of MK365Tools. For production use, please use the [main branch](https://github.com/Thugney/MK365Tools/tree/main).
+> Features in this branch may be unstable or incomplete.
+
 A comprehensive PowerShell module collection for managing Microsoft 365 devices, users, security, and compliance through Microsoft Graph API.
 
+## Installation
+
+1. Clone the repository:
+```powershell
+git clone https://github.com/Thugney/MK365Tools.git
+```
+
+2. Import the modules:
+```powershell
+# Import all modules
+Import-Module .\Modules\MK365DeviceManager\MK365DeviceManager.psd1
+Import-Module .\Modules\MK365UserManager\MK365UserManager.psd1
+Import-Module .\Modules\MK365SchoolManager\MK365SchoolManager.psd1
+
+# Or add the module path to PSModulePath
+$env:PSModulePath = $env:PSModulePath + ";$PWD\Modules"
+```
+
 ## Version
-Current stable version: 1.1.0
-For development version, see the [development branch](https://github.com/Thugney/MK365Tools/tree/development).
+Development version: 1.2.0-dev
+For stable version (1.1.0), see the [main branch](https://github.com/Thugney/MK365Tools/tree/main).
 
 ## Features
 
@@ -76,23 +99,6 @@ The modules require the following Microsoft Graph PowerShell modules (v2.26.1):
 You can install all required modules using:
 ```powershell
 Install-Module Microsoft.Graph -MinimumVersion 2.26.1 -Force
-```
-
-## Installation
-
-```powershell
-# Install from PowerShell Gallery (recommended)
-Install-Module -Name MK365Tools -Force
-
-# Or install individual modules
-Install-Module -Name MK365SchoolManager -Force
-Install-Module -Name MK365UserManager -Force
-Install-Module -Name MK365DeviceManager -Force
-
-# Import modules
-Import-Module MK365SchoolManager
-Import-Module MK365UserManager
-Import-Module MK365DeviceManager
 ```
 
 ## Quick Start
