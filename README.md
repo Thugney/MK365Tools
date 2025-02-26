@@ -1,11 +1,24 @@
-# MK365Tools - Microsoft 365 Device Management PowerShell Module
+# MK365Tools - Microsoft 365 Management Tools (Development Branch)
 
 [![GitHub](https://img.shields.io/github/license/Thugney/MK365Tools)](https://github.com/Thugney/MK365Tools/blob/main/LICENSE)
 [![Twitter Follow](https://img.shields.io/twitter/follow/eriteach?style=social)](https://twitter.com/eriteach)
 
+> ⚠️ **Development Version Notice**
+> 
+> This is the development branch of MK365Tools. For production use, please use the [main branch](https://github.com/Thugney/MK365Tools/tree/main).
+> Features in this branch may be unstable or incomplete.
+
 A comprehensive PowerShell module collection for managing Microsoft 365 devices, users, security, and compliance through Microsoft Graph API.
 
 ## Features
+
+### School Management (MK365SchoolManager)
+- Comprehensive school device lifecycle management
+- Automated device reset workflows
+- Device inventory tracking and reporting
+- School-specific configuration management
+- Bulk device operations with detailed logging
+- Integration with education-specific features
 
 ### User Management (MK365UserManager)
 - User lifecycle management (creation, modification, deletion)
@@ -42,16 +55,97 @@ A comprehensive PowerShell module collection for managing Microsoft 365 devices,
 - HTML and CSV report generation
 - Automated logging and diagnostics
 
+## Prerequisites
+
+### Microsoft Graph PowerShell SDK
+The modules require the following Microsoft Graph PowerShell modules (v2.26.1):
+- Microsoft.Graph.Authentication
+- Microsoft.Graph.DeviceManagement
+- Microsoft.Graph.Identity.DirectoryManagement
+- Microsoft.Graph.Users
+- Microsoft.Graph.Groups
+- Microsoft.Graph.Beta.DeviceManagement
+- Microsoft.Graph.DeviceManagement.Administration
+- Microsoft.Graph.DeviceManagement.Actions (v2.25.0)
+- Microsoft.Graph.DeviceManagement.Functions
+- Microsoft.Graph.DeviceManagement.Enrollment
+- Microsoft.Graph.Identity.SignIns
+- Microsoft.Graph.Intune
+
+You can install all required modules using:
+```powershell
+Install-Module Microsoft.Graph -MinimumVersion 2.26.1 -Force
+```
+
 ## Installation
 
 ```powershell
-# Clone the repository
-git clone https://github.com/Thugney/MK365Tools.git
+# Install from PowerShell Gallery (recommended)
+Install-Module -Name MK365Tools -Force
 
-# Import the modules
-Import-Module .\Modules\MK365DeviceManager\MK365DeviceManager.psm1
-Import-Module .\Modules\MK365UserManager\MK365UserManager.psm1
+# Or install individual modules
+Install-Module -Name MK365SchoolManager -Force
+Install-Module -Name MK365UserManager -Force
+Install-Module -Name MK365DeviceManager -Force
+
+# Import modules
+Import-Module MK365SchoolManager
+Import-Module MK365UserManager
+Import-Module MK365DeviceManager
 ```
+
+## Quick Start
+
+### School Management
+```powershell
+# Connect to Microsoft Graph
+Connect-MK365School
+
+# Get device inventory
+Get-MK365DeviceInventory -GroupName "School Devices"
+
+# Start device reset workflow
+Start-MK365ResetWorkflow -DeviceId "DEVICE-ID" -ResetType "Wipe"
+
+# Configure school settings
+Set-MK365SchoolConfig -ConfigPath "path\to\config.json"
+```
+
+### User Management
+```powershell
+# Connect to Microsoft Graph
+Connect-MK365User
+
+# Create a new user
+New-MK365User -UserPrincipalName "user@domain.com" -DisplayName "New User"
+
+# Get user information
+Get-MK365UserInfo -UserPrincipalName "user@domain.com"
+```
+
+### Device Management
+```powershell
+# Connect to Microsoft Graph
+Connect-MK365Device
+
+# Register Autopilot device
+Register-MK365AutopilotDevice -SerialNumber "SERIAL-NUMBER" -GroupTag "School-Devices"
+
+# Get device status
+Get-MK365DeviceStatus -SerialNumber "SERIAL-NUMBER"
+```
+
+## Module Documentation
+
+Each module has its own detailed documentation:
+
+- [MK365SchoolManager Documentation](./Modules/MK365SchoolManager/README.md)
+- [MK365UserManager Documentation](./Modules/MK365UserManager/README.md)
+- [MK365DeviceManager Documentation](./Modules/MK365DeviceManager/README.md)
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
 ## Usage
 

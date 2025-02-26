@@ -1,8 +1,9 @@
-# Import required modules
-using module Microsoft.Graph.Authentication
-using module Microsoft.Graph.Users
-using module Microsoft.Graph.Groups
-using module Microsoft.Graph.Identity.SignIns
+#Requires -Version 5.1
+#Requires -PSEdition Desktop
+#Requires -Modules @{ ModuleName='Microsoft.Graph.Authentication'; ModuleVersion='2.26.1' }
+#Requires -Modules @{ ModuleName='Microsoft.Graph.Users'; ModuleVersion='2.26.1' }
+#Requires -Modules @{ ModuleName='Microsoft.Graph.Groups'; ModuleVersion='2.26.1' }
+#Requires -Modules @{ ModuleName='Microsoft.Graph.Identity.SignIns'; ModuleVersion='2.26.1' }
 
 # Function to connect to Microsoft 365
 function Connect-MK365User {
