@@ -1,9 +1,82 @@
+# MK365UserManager.psm1
 #Requires -Version 5.1
-#Requires -PSEdition Desktop
-#Requires -Modules @{ ModuleName='Microsoft.Graph.Authentication'; ModuleVersion='2.26.1' }
-#Requires -Modules @{ ModuleName='Microsoft.Graph.Users'; ModuleVersion='2.26.1' }
-#Requires -Modules @{ ModuleName='Microsoft.Graph.Groups'; ModuleVersion='2.26.1' }
-#Requires -Modules @{ ModuleName='Microsoft.Graph.Identity.SignIns'; ModuleVersion='2.26.1' }
+
+function Install-RequiredModule {
+    param (
+        [string]$ModuleName,
+        [string]$RequiredVersion
+    )
+    
+    try {
+        $module = Get-Module -Name $ModuleName -ListAvailable | 
+            Where-Object { $_.Version -eq $RequiredVersion }
+        
+        if (-not $module) {
+            Write-Host "Installing $ModuleName version $RequiredVersion..."
+            
+            # Ensure we have access to PSGallery
+            $gallery = Get-PSRepository -Name "PSGallery" -ErrorAction SilentlyContinue
+            if (-not $gallery) {
+                Write-Host "Registering PSGallery..."
+                Register-PSRepository -Default -ErrorAction Stop
+            }
+            
+            # Try to find the module in PSGallery
+            $moduleInGallery = Find-Module -Name $ModuleName -RequiredVersion $RequiredVersion -ErrorAction Stop
+            if ($moduleInGallery) {
+                # Install the module
+                $moduleInGallery | Install-Module -Force -AllowClobber -ErrorAction Stop
+                Write-Host "Successfully installed $ModuleName"
+            }
+            else {
+                throw "Module $ModuleName version $RequiredVersion not found in PSGallery"
+            }
+        }
+        
+        # Import the module
+        Import-Module -Name $ModuleName -RequiredVersion $RequiredVersion -Force -ErrorAction Stop
+        Write-Host "Successfully loaded $ModuleName version $RequiredVersion"
+        return $true
+    }
+    catch {
+        Write-Warning "Error with module $ModuleName`: $_"
+        return $false
+    }
+}
+
+function Initialize-MK365Dependencies {
+    [CmdletBinding()]
+    param()
+    
+    $success = $true
+    
+    # Install NuGet if needed
+    if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
+        Write-Host "Installing NuGet provider..."
+        Install-PackageProvider -Name NuGet -Force -Scope CurrentUser | Out-Null
+    }
+    
+    # Required modules with their versions
+    $modules = @(
+        @{ Name = 'Microsoft.Graph.Authentication'; Version = '2.26.1' },
+        @{ Name = 'Microsoft.Graph.Users'; Version = '2.26.1' },
+        @{ Name = 'Microsoft.Graph.Groups'; Version = '2.26.1' },
+        @{ Name = 'Microsoft.Graph.Identity.SignIns'; Version = '2.26.1' }
+    )
+    
+    foreach ($module in $modules) {
+        if (-not (Install-RequiredModule -ModuleName $module.Name -RequiredVersion $module.Version)) {
+            $success = $false
+        }
+    }
+    
+    if (-not $success) {
+        Write-Warning "Some required modules could not be installed. The module may not function correctly."
+    }
+}
+
+# Run initialization when module is imported
+Initialize-MK365Dependencies
 
 # Function to connect to Microsoft 365
 function Connect-MK365User {
