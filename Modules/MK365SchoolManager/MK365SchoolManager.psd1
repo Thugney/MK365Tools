@@ -1,7 +1,7 @@
 # MK365SchoolManager Module Manifest
 @{
     RootModule = 'MK365SchoolManager.psm1'
-    ModuleVersion = '1.0.0-dev'
+    ModuleVersion = '1.1.0'
     GUID = 'c4d5e6f7-g8h9-4i0j-k1l2-m3n4o5p6q7r8'
     Author = 'Thugney'
     CompanyName = 'MK365Tools'

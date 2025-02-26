@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.1.0] - 2025-02-26
 
 ### Added
 - New MK365SchoolManager module for school-specific device management
@@ -11,15 +11,22 @@ All notable changes to this project will be documented in this file.
   - School-specific configuration management
   - Integration with education-specific features
 - New Graph module dependencies:
-  - Microsoft.Graph.DeviceManagement.Administration
-  - Microsoft.Graph.DeviceManagement.Functions
-  - Microsoft.Graph.DeviceManagement.Enrollment
+  - Microsoft.Graph.DeviceManagement.Administration (v2.26.1)
+  - Microsoft.Graph.DeviceManagement.Functions (v2.26.1)
+  - Microsoft.Graph.DeviceManagement.Enrollment (v2.26.1)
 
 ### Changed
 - Updated all Microsoft Graph PowerShell SDK dependencies to v2.26.1
+  - Microsoft.Graph.Authentication
+  - Microsoft.Graph.DeviceManagement
+  - Microsoft.Graph.Identity.DirectoryManagement
+  - Microsoft.Graph.Users
+  - Microsoft.Graph.Groups
+  - Microsoft.Graph.Beta.DeviceManagement
+  - Microsoft.Graph.Intune
+  - Microsoft.Graph.Identity.SignIns
 - Updated Microsoft.Graph.DeviceManagement.Actions to v2.25.0
-- Added new Graph module dependencies for enhanced device management capabilities
-- Standardized Graph module version requirements across all modules
+- Standardized module version requirements across all modules
 - Improved module version consistency in manifest files
 - Enhanced documentation with quick start guides and examples
 - Updated installation instructions for all modules
@@ -29,8 +36,17 @@ All notable changes to this project will be documented in this file.
 - Updated main README with school management features
 - Added quick start guides for all modules
 - Improved module dependency documentation
+- Enhanced branch management and development workflow
 
-## [1.0.0-dev] - 2025-02-25
+### Development
+- Established proper branch management workflow
+  - Development branch for feature work
+  - Main branch for stable releases
+  - Clean merge history maintained
+- Improved version control practices
+- Enhanced commit message clarity
+
+## [Unreleased]
 
 ### Added
 - Created development branch structure

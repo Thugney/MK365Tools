@@ -1,7 +1,7 @@
 # MK365DeviceManager Module Manifest
 @{
     RootModule = 'MK365DeviceManager.psm1'
-    ModuleVersion = '1.0.0-dev'
+    ModuleVersion = '1.1.0'
     GUID = 'a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6'
     Author = 'Thugney'
     CompanyName = 'MK365Tools'
